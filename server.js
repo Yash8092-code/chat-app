@@ -44,23 +44,31 @@ io.on("connection", (socket) => {
   // ✅ Clear all chat messages
   socket.on("clear chat", async () => {
     await Message.deleteMany({});
-    io.emit("chat cleared"); // notify all clients
+    io.emit("chat cleared");
   });
 
-  // ✅ Send last 20 messages on join
+  // ✅ Send last 20 messages
   Message.find().sort({ time: 1 }).limit(20).then(messages => {
     socket.emit("chat history", messages);
   });
 
-  // ✅ Handle new messages including replies
+  // ✅ Normal messages
   socket.on("chat message", async (msg) => {
     const newMsg = new Message({
       user: msg.user,
       text: msg.text,
-      replyTo: msg.replyTo || null  // if message is a reply, store it
+      replyTo: msg.replyTo || null
     });
     await newMsg.save();
-    io.emit("chat message", newMsg); // broadcast to all clients
+    io.emit("chat message", newMsg);
+  });
+
+  // ✅ Global Red Alert Feature
+  socket.on("send alert", (data) => {
+    io.emit("alert", {
+      sender: data.user,
+      text: data.text || "⚠️ ALERT from admin!"
+    });
   });
 
   socket.on("disconnect", () => {

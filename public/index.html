@@ -167,10 +167,51 @@
           font-size: 0.85em;
           padding: 8px;
         }
+        #alert-box {
+        display: none;
+        position: fixed;
+        top: 20px;
+        width: 90%;
+        max-width: 500px;
+        margin: auto;
+        z-index: 1000;
+        background: #d9534f;
+        color: white;
+        font-weight: bold;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+        }
+
+        #alert-btn {
+        margin: 5px 0;
+        background: #ff0000;
+        border-radius: 25px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 0.9em;
+        border: none;
+        color: white;
+        width: 160px;
+        text-align: center;
+        }
+        #alert-btn:hover {
+        background: #b30000;
+        }
       }
     </style>
   </head>
   <body>
+    <div id="alert-box"></div>
+    <audio id="alert-sound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
     <h2>💬 Chat App</h2>
 
     <div id="chat-screen">
@@ -184,6 +225,7 @@
         <button>➤</button>
       </form>
       <button id="clear-btn">🗑️ Clear Chat</button>
+      <button id="alert-btn">🚨 Send Alert</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -269,6 +311,25 @@
           socket.emit("clear chat");
         }
       });
+      const alertBox = document.getElementById("alert-box");
+        const alertSound = document.getElementById("alert-sound");
+
+        // Listen for alerts
+        socket.on("alert", (data) => {
+        alertBox.textContent = data.text + " 🚨 (from " + data.sender + ")";
+        alertBox.style.display = "block";
+        alertSound.play();
+
+        // Hide alert automatically after 5 seconds
+        setTimeout(() => {
+            alertBox.style.display = "none";
+        }, 5000);
+        });
+        const alertBtn = document.getElementById("alert-btn");
+        alertBtn.addEventListener("click", () => {
+        const text = prompt("Enter alert message:") || "⚠️ ALERT!";
+        socket.emit("send alert", { user: USERNAME, text });
+        });
     </script>
   </body>
 </html>
