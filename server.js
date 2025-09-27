@@ -44,10 +44,10 @@ io.on("connection", (socket) => {
 
   // When receiving new message
   socket.on("chat message", async (msg) => {
-    const newMsg = new Message({ text: msg });
-    await newMsg.save();
-    io.emit("chat message", newMsg); // broadcast to all connected clients
-  });
+  const newMsg = new Message({ user: msg.user, text: msg.text });
+  await newMsg.save();
+  io.emit("chat message", newMsg); // broadcast to all
+});
 
   socket.on("disconnect", () => {
     console.log("❌ User disconnected:", socket.id);
