@@ -207,6 +207,9 @@
       <button id="alert-btn">🚨 Send Alert</button>
     </div>
 
+    <!-- ✅ Fallback local audio -->
+    <audio id="alert-sound" src="/alert.mp3" preload="auto"></audio>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io("/", { transports: ["websocket", "polling"] });
@@ -218,11 +221,12 @@
       const replyPreview = document.getElementById("reply-preview");
       const alertBox = document.getElementById("alert-box");
       const alertBtn = document.getElementById("alert-btn");
+      const alertSound = document.getElementById("alert-sound");
 
       let USERNAME = prompt("Enter your name:") || "Anonymous";
       let replyTo = null;
 
-      // ✅ Request system notification permission
+      // Request system notification permission
       if ("Notification" in window && Notification.permission !== "granted") {
         Notification.requestPermission();
       }
@@ -256,9 +260,7 @@
 
       // Chat events
       socket.on("chat history", (msgs) => msgs.forEach(addMessage));
-
       socket.on("chat message", (msg) => addMessage(msg));
-
       socket.on("chat cleared", () => {
         messages.innerHTML = "";
         addMessage({ user: "System", text: "Chat was cleared 🗑️" });
@@ -281,26 +283,32 @@
         }
       });
 
-      // ✅ On ALERT → show on-screen, trigger system notification + vibration
+      // On ALERT
       socket.on("alert", (data) => {
         alertBox.textContent = data.text + " 🚨 (from " + data.sender + ")";
         alertBox.style.display = "block";
 
-        // System Notification (with device sound)
+        // System Notification
         if ("Notification" in window && Notification.permission === "granted") {
           new Notification("🚨 Chat Alert", {
             body: data.text + " (from " + data.sender + ")",
-            icon: "/icon.png" // optional, add icon.png in /public if you like
+            icon: "/icon.png"
           });
         }
 
-        // Vibration (mobile devices)
+        // Play fallback sound
+        alertSound.currentTime = 0;
+        alertSound.play().catch(err => console.warn("Play blocked:", err));
+
+        // Vibrate
         if (navigator.vibrate) {
           navigator.vibrate([300, 150, 300]);
         }
 
         setTimeout(() => {
           alertBox.style.display = "none";
+          alertSound.pause();
+          alertSound.currentTime = 0;
         }, 5000);
       });
 
