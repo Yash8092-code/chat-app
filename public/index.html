@@ -73,7 +73,6 @@
         border-bottom-left-radius: 0;
       }
 
-      /* Reply section inside bubble */
       .reply-box {
         font-size: 0.8em;
         color: #444;
@@ -83,7 +82,6 @@
         opacity: 0.8;
       }
 
-      /* Reply preview above input */
       #reply-preview {
         display: none;
         width: 100%;
@@ -168,43 +166,43 @@
           padding: 8px;
         }
         #alert-box {
-        display: none;
-        position: fixed;
-        top: 20px;
-        width: 90%;
-        max-width: 500px;
-        margin: auto;
-        z-index: 1000;
-        background: #d9534f;
-        color: white;
-        font-weight: bold;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-        animation: pulse 1s infinite;
+          display: none;
+          position: fixed;
+          top: 20px;
+          width: 90%;
+          max-width: 500px;
+          margin: auto;
+          z-index: 1000;
+          background: #d9534f;
+          color: white;
+          font-weight: bold;
+          padding: 15px;
+          border-radius: 10px;
+          text-align: center;
+          box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+          animation: pulse 1s infinite;
         }
 
         @keyframes pulse {
-        0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.05); opacity: 0.8; }
-        100% { transform: scale(1); opacity: 1; }
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 1; }
         }
 
         #alert-btn {
-        margin: 5px 0;
-        background: #ff0000;
-        border-radius: 25px;
-        padding: 10px 16px;
-        cursor: pointer;
-        font-size: 0.9em;
-        border: none;
-        color: white;
-        width: 160px;
-        text-align: center;
+          margin: 5px 0;
+          background: #ff0000;
+          border-radius: 25px;
+          padding: 10px 16px;
+          cursor: pointer;
+          font-size: 0.9em;
+          border: none;
+          color: white;
+          width: 160px;
+          text-align: center;
         }
         #alert-btn:hover {
-        background: #b30000;
+          background: #b30000;
         }
       }
     </style>
@@ -217,7 +215,6 @@
     <div id="chat-screen">
       <ul id="messages"></ul>
 
-      <!-- Reply preview -->
       <div id="reply-preview"></div>
 
       <form id="form">
@@ -230,24 +227,30 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io("https://chat-app-uucm.onrender.com", {
-        transports: ["websocket", "polling"],
-      });
+      const socket = io("/", { transports: ["websocket", "polling"] });
 
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");
       const clearBtn = document.getElementById("clear-btn");
       const replyPreview = document.getElementById("reply-preview");
+      const alertBox = document.getElementById("alert-box");
+      const alertSound = document.getElementById("alert-sound");
+      const alertBtn = document.getElementById("alert-btn");
 
       let USERNAME = prompt("Enter your name:") || "Anonymous";
-      let replyTo = null; // store reply target
+      let replyTo = null;
 
-      // Add a message bubble
+      // ✅ Unlock audio on first click/tap
+      document.addEventListener("click", () => {
+        alertSound.play().catch(() => {});
+        alertSound.pause();
+        alertSound.currentTime = 0;
+      }, { once: true });
+
       function addMessage(msg) {
         const li = document.createElement("li");
 
-        // prepend reply section if exists
         if (msg.replyTo) {
           const replyDiv = document.createElement("div");
           replyDiv.className = "reply-box";
@@ -259,41 +262,32 @@
         mainText.textContent = msg.user + ": " + msg.text;
         li.appendChild(mainText);
 
-        li.className =
-          msg.user === USERNAME ? "my-message" : "other-message";
+        li.className = msg.user === USERNAME ? "my-message" : "other-message";
 
-        // click-to-reply
         li.addEventListener("click", () => {
           replyTo = { user: msg.user, text: msg.text };
           replyPreview.style.display = "block";
           replyPreview.innerHTML =
-            "<span>Replying to " +
-            replyTo.user +
-            ":</span> " +
-            replyTo.text;
+            "<span>Replying to " + replyTo.user + ":</span> " + replyTo.text;
         });
 
         messages.appendChild(li);
         messages.scrollTop = messages.scrollHeight;
       }
 
-      // History
       socket.on("chat history", (msgs) => {
         msgs.forEach(addMessage);
       });
 
-      // New message
       socket.on("chat message", (msg) => {
         addMessage(msg);
       });
 
-      // Chat cleared
       socket.on("chat cleared", () => {
         messages.innerHTML = "";
         addMessage({ user: "System", text: "Chat was cleared 🗑️" });
       });
 
-      // Send
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (input.value.trim()) {
@@ -305,31 +299,31 @@
         }
       });
 
-      // Clear all chats
       clearBtn.addEventListener("click", () => {
         if (confirm("Are you sure you want to delete all chats?")) {
           socket.emit("clear chat");
         }
       });
-      const alertBox = document.getElementById("alert-box");
-        const alertSound = document.getElementById("alert-sound");
 
-        // Listen for alerts
-        socket.on("alert", (data) => {
+      // ✅ ALERT event with working sound
+      socket.on("alert", (data) => {
         alertBox.textContent = data.text + " 🚨 (from " + data.sender + ")";
         alertBox.style.display = "block";
-        alertSound.play();
 
-        // Hide alert automatically after 5 seconds
+        alertSound.currentTime = 0;
+        alertSound.play().catch(err => console.warn("Autoplay blocked:", err));
+
         setTimeout(() => {
-            alertBox.style.display = "none";
+          alertBox.style.display = "none";
+          alertSound.pause();
+          alertSound.currentTime = 0;
         }, 5000);
-        });
-        const alertBtn = document.getElementById("alert-btn");
-        alertBtn.addEventListener("click", () => {
+      });
+
+      alertBtn.addEventListener("click", () => {
         const text = prompt("Enter alert message:") || "⚠️ ALERT!";
         socket.emit("send alert", { user: USERNAME, text });
-        });
+      });
     </script>
   </body>
 </html>
