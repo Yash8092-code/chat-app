@@ -23,6 +23,46 @@
         text-align: center;
       }
 
+      #login-screen {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #ece5dd;
+      }
+
+      #login-box {
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        text-align: center;
+      }
+
+      #login-box input {
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      #login-box button {
+        background: #075e54;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      #chat-screen {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+      }
+
       #messages {
         list-style: none;
         padding: 10px;
@@ -49,7 +89,7 @@
 
       .my-message {
         align-self: flex-end;
-        background: #dcf8c6; /* WhatsApp light green */
+        background: #dcf8c6;
         border-bottom-right-radius: 0;
       }
 
@@ -96,47 +136,72 @@
   </head>
   <body>
     <h2>💬 Chat App</h2>
-    <ul id="messages"></ul>
-    <form id="form">
-      <input id="input" autocomplete="off" placeholder="Type a message..."/>
-      <button>Send</button>
-    </form>
+
+    <!-- Login screen -->
+    <div id="login-screen">
+      <div id="login-box">
+        <h3>Enter your name</h3>
+        <input id="username" placeholder="Your name" />
+        <button id="join-btn">Join Chat</button>
+      </div>
+    </div>
+
+    <!-- Chat screen -->
+    <div id="chat-screen">
+      <ul id="messages"></ul>
+      <form id="form">
+        <input id="input" autocomplete="off" placeholder="Type a message..."/>
+        <button>Send</button>
+      </form>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      // Connect to server
       const socket = io("https://chat-app-uucm.onrender.com", {
         transports: ["websocket", "polling"]
       });
+
+      const loginScreen = document.getElementById("login-screen");
+      const chatScreen = document.getElementById("chat-screen");
+      const joinBtn = document.getElementById("join-btn");
+      const usernameInput = document.getElementById("username");
 
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");
 
-      const USERNAME = "Yash"; // <--- your fixed username
+      let USERNAME = null;
 
-      // Add a message bubble to the chat
+      // Add a message bubble
       function addMessage(msg) {
         const li = document.createElement("li");
-
         li.textContent = msg.user + ": " + msg.text;
         li.className = (msg.user === USERNAME) ? "my-message" : "other-message";
-
         messages.appendChild(li);
         messages.scrollTop = messages.scrollHeight;
       }
 
-      // Load past chat history
+      // When history arrives
       socket.on("chat history", (msgs) => {
         msgs.forEach(addMessage);
       });
 
-      // Listen for new messages
+      // When a new message arrives
       socket.on("chat message", (msg) => {
         addMessage(msg);
       });
 
-      // Send new message
+      // Handle login
+      joinBtn.addEventListener("click", () => {
+        const name = usernameInput.value.trim();
+        if (!name) return alert("Please enter a name!");
+        
+        USERNAME = name;
+        loginScreen.style.display = "none";
+        chatScreen.style.display = "flex";
+      });
+
+      // Sending messages
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (input.value.trim()) {
