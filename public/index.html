@@ -148,68 +148,50 @@
         background: #c9302c;
       }
 
-      @media (max-width: 480px) {
-        #messages {
-          height: 65vh;
-        }
-        input {
-          font-size: 0.9em;
-          padding: 8px;
-        }
-        button {
-          padding: 8px 12px;
-        }
-        #clear-btn {
-          width: 100%;
-          max-width: 200px;
-          font-size: 0.85em;
-          padding: 8px;
-        }
-        #alert-box {
-          display: none;
-          position: fixed;
-          top: 20px;
-          width: 90%;
-          max-width: 500px;
-          margin: auto;
-          z-index: 1000;
-          background: #d9534f;
-          color: white;
-          font-weight: bold;
-          padding: 15px;
-          border-radius: 10px;
-          text-align: center;
-          box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
-          animation: pulse 1s infinite;
-        }
+      #alert-box {
+        display: none;
+        position: fixed;
+        top: 20px;
+        width: 90%;
+        max-width: 500px;
+        margin: auto;
+        z-index: 1000;
+        background: #d9534f;
+        color: white;
+        font-weight: bold;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+        animation: pulse 1s infinite;
+      }
 
-        @keyframes pulse {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.05); opacity: 0.8; }
-          100% { transform: scale(1); opacity: 1; }
-        }
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
 
-        #alert-btn {
-          margin: 5px 0;
-          background: #ff0000;
-          border-radius: 25px;
-          padding: 10px 16px;
-          cursor: pointer;
-          font-size: 0.9em;
-          border: none;
-          color: white;
-          width: 160px;
-          text-align: center;
-        }
-        #alert-btn:hover {
-          background: #b30000;
-        }
+      #alert-btn {
+        margin: 5px 0;
+        background: #ff0000;
+        border-radius: 25px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 0.9em;
+        border: none;
+        color: white;
+        width: 160px;
+        text-align: center;
+      }
+
+      #alert-btn:hover {
+        background: #b30000;
       }
     </style>
   </head>
   <body>
     <div id="alert-box"></div>
-    <audio id="alert-sound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
     <h2>💬 Chat App</h2>
 
     <div id="chat-screen">
@@ -235,18 +217,15 @@
       const clearBtn = document.getElementById("clear-btn");
       const replyPreview = document.getElementById("reply-preview");
       const alertBox = document.getElementById("alert-box");
-      const alertSound = document.getElementById("alert-sound");
       const alertBtn = document.getElementById("alert-btn");
 
       let USERNAME = prompt("Enter your name:") || "Anonymous";
       let replyTo = null;
 
-      // ✅ Unlock audio on first click/tap
-      document.addEventListener("click", () => {
-        alertSound.play().catch(() => {});
-        alertSound.pause();
-        alertSound.currentTime = 0;
-      }, { once: true });
+      // ✅ Request system notification permission
+      if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
 
       function addMessage(msg) {
         const li = document.createElement("li");
@@ -275,13 +254,10 @@
         messages.scrollTop = messages.scrollHeight;
       }
 
-      socket.on("chat history", (msgs) => {
-        msgs.forEach(addMessage);
-      });
+      // Chat events
+      socket.on("chat history", (msgs) => msgs.forEach(addMessage));
 
-      socket.on("chat message", (msg) => {
-        addMessage(msg);
-      });
+      socket.on("chat message", (msg) => addMessage(msg));
 
       socket.on("chat cleared", () => {
         messages.innerHTML = "";
@@ -305,18 +281,26 @@
         }
       });
 
-      // ✅ ALERT event with working sound
+      // ✅ On ALERT → show on-screen, trigger system notification + vibration
       socket.on("alert", (data) => {
         alertBox.textContent = data.text + " 🚨 (from " + data.sender + ")";
         alertBox.style.display = "block";
 
-        alertSound.currentTime = 0;
-        alertSound.play().catch(err => console.warn("Autoplay blocked:", err));
+        // System Notification (with device sound)
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("🚨 Chat Alert", {
+            body: data.text + " (from " + data.sender + ")",
+            icon: "/icon.png" // optional, add icon.png in /public if you like
+          });
+        }
+
+        // Vibration (mobile devices)
+        if (navigator.vibrate) {
+          navigator.vibrate([300, 150, 300]);
+        }
 
         setTimeout(() => {
           alertBox.style.display = "none";
-          alertSound.pause();
-          alertSound.currentTime = 0;
         }, 5000);
       });
 
