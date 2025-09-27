@@ -20,7 +20,12 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+
+
+     const socket = io("https://chat-app-uucm.onrender.com", {
+         transports: ["websocket", "polling"]
+    });
+        
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");

@@ -3,11 +3,19 @@ const mongoose = require("mongoose");
 const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
+
 console.log("MongoDB URI from .env:", process.env.MONGODB_URI);
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// ✅ Allow cross-origin connections (important for phone/web)
+const io = new Server(server, {
+  cors: {
+    origin: "*", // you can restrict this to your domain later
+    methods: ["GET", "POST"]
+  }
+});
 
 // --- MongoDB connection ---
 mongoose.connect(process.env.MONGODB_URI)
@@ -22,27 +30,27 @@ const messageSchema = new mongoose.Schema({
 });
 const Message = mongoose.model("Message", messageSchema);
 
-// Serve static files
+// Serve static files from "public"
 app.use(express.static(__dirname + "/public"));
 
 // --- Socket.IO ---
 io.on("connection", (socket) => {
-  console.log("🔌 User connected");
+  console.log("🔌 User connected:", socket.id);
 
-  // Send chat history
+  // Send last 20 messages
   Message.find().sort({ time: 1 }).limit(20).then(messages => {
     socket.emit("chat history", messages);
   });
 
-  // Listen for new messages
+  // When receiving new message
   socket.on("chat message", async (msg) => {
     const newMsg = new Message({ text: msg });
     await newMsg.save();
-    io.emit("chat message", newMsg); // broadcast to all
+    io.emit("chat message", newMsg); // broadcast to all connected clients
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ User disconnected");
+    console.log("❌ User disconnected:", socket.id);
   });
 });
 
