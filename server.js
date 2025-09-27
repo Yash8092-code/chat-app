@@ -26,6 +26,10 @@ mongoose.connect(process.env.MONGODB_URI)
 const messageSchema = new mongoose.Schema({
   user: { type: String, default: "Anonymous" },
   text: String,
+  replyTo: {
+    user: String,
+    text: String
+  },
   time: { type: Date, default: Date.now }
 });
 const Message = mongoose.model("Message", messageSchema);
@@ -37,23 +41,27 @@ app.use(express.static(__dirname + "/public"));
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
-  // Clear all chat messages
-socket.on("clear chat", async () => {
-  await Message.deleteMany({});
-  io.emit("chat cleared"); // notify all clients
-});
+  // ✅ Clear all chat messages
+  socket.on("clear chat", async () => {
+    await Message.deleteMany({});
+    io.emit("chat cleared"); // notify all clients
+  });
 
-  // Send last 20 messages
+  // ✅ Send last 20 messages on join
   Message.find().sort({ time: 1 }).limit(20).then(messages => {
     socket.emit("chat history", messages);
   });
 
-  // When receiving new message
+  // ✅ Handle new messages including replies
   socket.on("chat message", async (msg) => {
-  const newMsg = new Message({ user: msg.user, text: msg.text });
-  await newMsg.save();
-  io.emit("chat message", newMsg); // broadcast to all
-});
+    const newMsg = new Message({
+      user: msg.user,
+      text: msg.text,
+      replyTo: msg.replyTo || null  // if message is a reply, store it
+    });
+    await newMsg.save();
+    io.emit("chat message", newMsg); // broadcast to all clients
+  });
 
   socket.on("disconnect", () => {
     console.log("❌ User disconnected:", socket.id);
