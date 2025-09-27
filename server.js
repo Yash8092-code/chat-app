@@ -37,6 +37,12 @@ app.use(express.static(__dirname + "/public"));
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
+  // Clear all chat messages
+socket.on("clear chat", async () => {
+  await Message.deleteMany({});
+  io.emit("chat cleared"); // notify all clients
+});
+
   // Send last 20 messages
   Message.find().sort({ time: 1 }).limit(20).then(messages => {
     socket.emit("chat history", messages);

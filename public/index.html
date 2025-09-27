@@ -23,41 +23,8 @@
         text-align: center;
       }
 
-      #login-screen {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        background: #ece5dd;
-      }
-
-      #login-box {
-        background: #fff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-        text-align: center;
-      }
-
-      #login-box input {
-        padding: 10px;
-        margin-bottom: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-      }
-
-      #login-box button {
-        background: #075e54;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-      }
-
       #chat-screen {
-        display: none;
+        display: flex;
         flex-direction: column;
         align-items: center;
         width: 100%;
@@ -69,7 +36,7 @@
         margin: 0;
         width: 100%;
         max-width: 400px;
-        height: 70vh;
+        height: 65vh;
         overflow-y: auto;
         background: #fff;
         border-radius: 10px;
@@ -132,19 +99,23 @@
       button:hover {
         background: #128c7e;
       }
+
+      #clear-btn {
+        margin-top: 8px;
+        background: #d9534f;
+        border-radius: 20px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      #clear-btn:hover {
+        background: #c9302c;
+      }
     </style>
   </head>
   <body>
     <h2>💬 Chat App</h2>
-
-    <!-- Login screen -->
-    <div id="login-screen">
-      <div id="login-box">
-        <h3>Enter your name</h3>
-        <input id="username" placeholder="Your name" />
-        <button id="join-btn">Join Chat</button>
-      </div>
-    </div>
 
     <!-- Chat screen -->
     <div id="chat-screen">
@@ -153,6 +124,7 @@
         <input id="input" autocomplete="off" placeholder="Type a message..."/>
         <button>Send</button>
       </form>
+      <button id="clear-btn">🗑️ Clear Chat</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -161,16 +133,12 @@
         transports: ["websocket", "polling"]
       });
 
-      const loginScreen = document.getElementById("login-screen");
-      const chatScreen = document.getElementById("chat-screen");
-      const joinBtn = document.getElementById("join-btn");
-      const usernameInput = document.getElementById("username");
-
       const form = document.getElementById("form");
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");
+      const clearBtn = document.getElementById("clear-btn");
 
-      let USERNAME = null;
+      let USERNAME = prompt("Enter your name:") || "Anonymous";
 
       // Add a message bubble
       function addMessage(msg) {
@@ -191,14 +159,10 @@
         addMessage(msg);
       });
 
-      // Handle login
-      joinBtn.addEventListener("click", () => {
-        const name = usernameInput.value.trim();
-        if (!name) return alert("Please enter a name!");
-        
-        USERNAME = name;
-        loginScreen.style.display = "none";
-        chatScreen.style.display = "flex";
+      // When chat is cleared
+      socket.on("chat cleared", () => {
+        messages.innerHTML = "";
+        addMessage({ user: "System", text: "Chat was cleared 🗑️" });
       });
 
       // Sending messages
@@ -208,6 +172,13 @@
           const text = input.value.trim();
           socket.emit("chat message", { user: USERNAME, text });
           input.value = "";
+        }
+      });
+
+      // Clear chat
+      clearBtn.addEventListener("click", () => {
+        if (confirm("Are you sure you want to delete all chats?")) {
+          socket.emit("clear chat");
         }
       });
     </script>
