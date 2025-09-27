@@ -3,12 +3,95 @@
   <head>
     <title>Chat App</title>
     <style>
-      body { font: 14px sans-serif; display: flex; flex-direction: column; align-items: center; }
-      #messages { list-style: none; padding: 0; width: 300px; border: 1px solid #888; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
-      #messages li { margin: 5px; padding: 3px; background: #eee; }
-      form { display: flex; width: 300px; }
-      input { flex: 1; padding: 5px; }
-      button { padding: 5px; }
+      body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #ece5dd; /* WhatsApp light background */
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+}
+
+h2 {
+  margin: 0;
+  background: #075e54; /* WhatsApp green */
+  color: white;
+  padding: 10px 20px;
+  width: 100%;
+  text-align: center;
+}
+
+#messages {
+  list-style: none;
+  padding: 10px;
+  margin: 0;
+  width: 100%;
+  max-width: 400px;
+  height: 70vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+#messages li {
+  max-width: 75%;
+  margin: 5px 0;
+  padding: 8px 12px;
+  border-radius: 15px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.my-message {
+  align-self: flex-end;
+  background: #dcf8c6; /* WhatsApp light green */
+  border-bottom-right-radius: 0;
+}
+
+.other-message {
+  align-self: flex-start;
+  background: #ffffff;
+  border: 1px solid #ececec;
+  border-bottom-left-radius: 0;
+}
+
+form {
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+  margin-top: 10px;
+  background: #f0f0f0;
+  padding: 8px;
+  border-radius: 25px;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 20px;
+  outline: none;
+}
+
+button {
+  background: #075e54;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  margin-left: 5px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #128c7e;
+}
     </style>
   </head>
   <body>
@@ -30,26 +113,37 @@
       const input = document.getElementById("input");
       const messages = document.getElementById("messages");
 
-      function addMessage(msg) {
+      function addMessage(msg, isMine = false) {
         const li = document.createElement("li");
         li.textContent = msg.user + ": " + msg.text;
+        li.className = isMine ? "my-message" : "other-message";
         messages.appendChild(li);
         messages.scrollTop = messages.scrollHeight;
-      }
+        }
 
-      socket.on("chat history", (msgs) => {
-        msgs.forEach(addMessage);
-      });
+        // When receiving history
+        socket.on("chat history", (msgs) => {
+        msgs.forEach(m => addMessage(m, m.user === "Me"));
+        });
 
-      socket.on("chat message", (msg) => addMessage(msg));
+        // When receiving new message
+        socket.on("chat message", (msg) => {
+        addMessage(msg, msg.user === "Me");
+        });
 
-      form.addEventListener("submit", (e) => {
+        // When you send a message
+        form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (input.value) {
-          socket.emit("chat message", input.value);
-          input.value = "";
+            const text = input.value;
+            socket.emit("chat message", text);
+
+            // Optimistically render on your side
+            addMessage({ user: "Me", text }, true);
+
+            input.value = "";
         }
-      });
+        });
     </script>
   </body>
 </html>
