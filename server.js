@@ -3,7 +3,7 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const mysql = require("mysql2/promise");
+const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
@@ -16,15 +16,15 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
-// ------------ MySQL Configuration ------------
+// -------- MySQL Database Connection --------
 const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
-});
+}).promise();
 
-// ------------ Session Store ------------
+// -------- Session Store in MySQL --------
 const sessionStore = new MySQLStore({}, db);
 
 app.use(express.json());
@@ -32,7 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     key: "chat_sid",
-    secret: "super-secret-key", // change for production!
+    secret: "super-secret-key",   // replace with env secret
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
@@ -40,35 +40,41 @@ app.use(
   })
 );
 
-// ------------ Serve Static Files ------------
+// -------- Serve Static Files --------
 app.use(express.static(path.join(__dirname, "public")));
 
-// ------------ Database Setup ------------
+// -------- Initialize Tables --------
 async function initTables() {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      username VARCHAR(50) NOT NULL,
-      email VARCHAR(100) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(50) NOT NULL,
+        email VARCHAR(100) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user VARCHAR(50) NOT NULL,
-      text TEXT NOT NULL,
-      reply_user VARCHAR(50),
-      reply_text TEXT,
-      time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user VARCHAR(50) NOT NULL,
+        text TEXT NOT NULL,
+        reply_user VARCHAR(50),
+        reply_text TEXT,
+        time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    console.log("✅ Tables ensured");
+  } catch (err) {
+    console.error("❌ Error creating tables:", err);
+  }
 }
 initTables();
 
-// ------------ Auth Routes ------------
+// -------- Auth Routes --------
 app.post("/signup", async (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password)
@@ -117,7 +123,7 @@ app.get("/me", (req, res) => {
   else res.status(401).json({ error: "Not logged in" });
 });
 
-// ------------ Chat Page Protection ------------
+// -------- Protect Chat Page --------
 app.get("/chat", (req, res) => {
   if (!req.session.user) {
     return res.redirect("/login.html");
@@ -125,42 +131,54 @@ app.get("/chat", (req, res) => {
   res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
-// ------------ Socket.IO Chat Logic ------------
+// -------- Socket.IO Chat --------
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
-  // send last 20 messages
+  // Send last 20 messages
   (async () => {
-    const [msgs] = await db.query(
-      "SELECT * FROM messages ORDER BY time ASC LIMIT 20"
-    );
-    socket.emit(
-      "chat history",
-      msgs.map((m) => ({
-        user: m.user,
-        text: m.text,
-        replyTo: m.reply_user ? { user: m.reply_user, text: m.reply_text } : null,
-        time: m.time,
-      }))
-    );
+    try {
+      const [msgs] = await db.query(
+        "SELECT * FROM messages ORDER BY time ASC LIMIT 20"
+      );
+      socket.emit(
+        "chat history",
+        msgs.map((m) => ({
+          user: m.user,
+          text: m.text,
+          replyTo: m.reply_user ? { user: m.reply_user, text: m.reply_text } : null,
+          time: m.time,
+        }))
+      );
+    } catch (err) {
+      console.error("❌ Error fetching history:", err);
+    }
   })();
 
-  // save and broadcast message
+  // Save + Broadcast message
   socket.on("chat message", async (msg) => {
-    await db.query(
-      "INSERT INTO messages (user, text, reply_user, reply_text) VALUES (?, ?, ?, ?)",
-      [msg.user, msg.text, msg.replyTo?.user || null, msg.replyTo?.text || null]
-    );
-    io.emit("chat message", msg);
+    try {
+      await db.query(
+        "INSERT INTO messages (user, text, reply_user, reply_text) VALUES (?, ?, ?, ?)",
+        [msg.user, msg.text, msg.replyTo?.user || null, msg.replyTo?.text || null]
+      );
+      io.emit("chat message", msg);
+    } catch (err) {
+      console.error("❌ Error saving message:", err);
+    }
   });
 
-  // clear chat
+  // Clear chat
   socket.on("clear chat", async () => {
-    await db.query("DELETE FROM messages");
-    io.emit("chat cleared");
+    try {
+      await db.query("DELETE FROM messages");
+      io.emit("chat cleared");
+    } catch (err) {
+      console.error("❌ Error clearing chat:", err);
+    }
   });
 
-  // alerts
+  // Alerts
   socket.on("send alert", (data) => {
     io.emit("alert", {
       sender: data.user,
@@ -173,7 +191,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ------------ Start Server ------------
+// -------- Start Server --------
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
