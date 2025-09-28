@@ -25,16 +25,19 @@ const pool = new Pool({
 // -------- Session Store in Postgres --------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+
 app.use(
   session({
     store: new pgSession({
       pool,
       tableName: "session",
+      createTableIfMissing: true   // <-- auto-create table
     }),
-    secret: "super-secret-key", // ✅ change for production
+    secret: "super-secret-key", 
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 }, // 1 hour
+    cookie: { maxAge: 1000 * 60 * 60 } 
   })
 );
 
