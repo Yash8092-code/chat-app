@@ -3,10 +3,10 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const mysql = require("mysql2");
-const bcrypt = require("bcryptjs"); // safer, works in Render
+const { Pool } = require("pg");
+const bcrypt = require("bcryptjs");
 const session = require("express-session");
-const MySQLStore = require("express-mysql-session")(session);
+const pgSession = require("connect-pg-simple")(session);
 const path = require("path");
 require("dotenv").config();
 
@@ -16,24 +16,22 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
-// -------- MySQL Connection --------
-const db = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-}).promise();
+// -------- Postgres Connection --------
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }, // needed for Render hosted postgres
+});
 
-// -------- Session Store --------
-const sessionStore = new MySQLStore({}, db);
-
+// -------- Session Store in Postgres --------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
-    key: "chat_sid",
-    secret: "super-secret-key", // 🔐 change for production
-    store: sessionStore,
+    store: new pgSession({
+      pool,
+      tableName: "session",
+    }),
+    secret: "super-secret-key", // ✅ change for production
     resave: false,
     saveUninitialized: false,
     cookie: { maxAge: 1000 * 60 * 60 }, // 1 hour
@@ -42,31 +40,28 @@ app.use(
 
 // -------- Initialize Tables --------
 async function initTables() {
-  try {
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        username VARCHAR(50) NOT NULL,
-        email VARCHAR(100) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) NOT NULL,
+      email VARCHAR(100) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user VARCHAR(50) NOT NULL,
-        text TEXT NOT NULL,
-        reply_user VARCHAR(50),
-        reply_text TEXT,
-        time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log("✅ Tables ensured");
-  } catch (err) {
-    console.error("❌ Error creating tables:", err);
-  }
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) NOT NULL,
+      text TEXT NOT NULL,
+      reply_user VARCHAR(50),
+      reply_text TEXT,
+      time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  console.log("✅ Tables ensured");
 }
 initTables();
 
@@ -77,18 +72,17 @@ app.post("/signup", async (req, res) => {
     return res.status(400).json({ error: "All fields required" });
 
   try {
-    const [rows] = await db.query("SELECT id FROM users WHERE email = ?", [email]);
-    if (rows.length) return res.status(400).json({ error: "Email already exists" });
+    const userCheck = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+    if (userCheck.rows.length) return res.status(400).json({ error: "Email already exists" });
 
     const hash = await bcrypt.hash(password, 10);
-    await db.query("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", [
-      username,
-      email,
-      hash,
-    ]);
+    await pool.query(
+      "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)",
+      [username, email, hash]
+    );
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Signup error", err);
     res.status(500).json({ error: "Signup failed" });
   }
 });
@@ -99,17 +93,17 @@ app.post("/login", async (req, res) => {
     return res.status(400).json({ error: "All fields required" });
 
   try {
-    const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
-    if (!rows.length) return res.status(401).json({ error: "Invalid credentials" });
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    if (!result.rows.length) return res.status(401).json({ error: "Invalid credentials" });
 
-    const user = rows[0];
+    const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: "Invalid credentials" });
 
     req.session.user = { id: user.id, username: user.username, email: user.email };
     res.json({ success: true, username: user.username });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Login error", err);
     res.status(500).json({ error: "Login failed" });
   }
 });
@@ -119,17 +113,13 @@ app.get("/me", (req, res) => {
   else res.status(401).json({ error: "Not logged in" });
 });
 
-// -------- STATIC + ROUTING FIX --------
-
-// serve static files but without auto index
+// -------- Routing --------
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
-// root always goes to login
 app.get("/", (req, res) => {
   res.redirect("/login.html");
 });
 
-// only authenticated users can access chat
 app.get("/chat", (req, res) => {
   if (!req.session.user) {
     return res.redirect("/login.html");
@@ -141,18 +131,20 @@ app.get("/chat", (req, res) => {
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
-  // Send last 20 messages
+  // send last 20 messages
   (async () => {
     try {
-      const [msgs] = await db.query(
+      const result = await pool.query(
         "SELECT * FROM messages ORDER BY time ASC LIMIT 20"
       );
       socket.emit(
         "chat history",
-        msgs.map((m) => ({
-          user: m.user,
+        result.rows.map((m) => ({
+          user: m.username,
           text: m.text,
-          replyTo: m.reply_user ? { user: m.reply_user, text: m.reply_text } : null,
+          replyTo: m.reply_user
+            ? { user: m.reply_user, text: m.reply_text }
+            : null,
           time: m.time,
         }))
       );
@@ -161,11 +153,10 @@ io.on("connection", (socket) => {
     }
   })();
 
-  // Save + Broadcast message
   socket.on("chat message", async (msg) => {
     try {
-      await db.query(
-        "INSERT INTO messages (user, text, reply_user, reply_text) VALUES (?, ?, ?, ?)",
+      await pool.query(
+        "INSERT INTO messages (username, text, reply_user, reply_text) VALUES ($1, $2, $3, $4)",
         [msg.user, msg.text, msg.replyTo?.user || null, msg.replyTo?.text || null]
       );
       io.emit("chat message", msg);
@@ -174,17 +165,15 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Clear chat
   socket.on("clear chat", async () => {
     try {
-      await db.query("DELETE FROM messages");
+      await pool.query("DELETE FROM messages");
       io.emit("chat cleared");
     } catch (err) {
       console.error("❌ Error clearing chat:", err);
     }
   });
 
-  // Alerts
   socket.on("send alert", (data) => {
     io.emit("alert", {
       sender: data.user,
