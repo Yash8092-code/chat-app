@@ -4,7 +4,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const mysql = require("mysql2");
-const bcrypt = require("bcryptjs"); // we use bcryptjs for cross-platform support
+const bcrypt = require("bcryptjs"); // safer, works in Render
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 const path = require("path");
@@ -32,16 +32,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     key: "chat_sid",
-    secret: "super-secret-key",
+    secret: "super-secret-key", // 🔐 change for production
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: { maxAge: 1000 * 60 * 60 }, // 1 hour
   })
 );
-
-// -------- Serve Static Files --------
-app.use(express.static(path.join(__dirname, "public")));
 
 // -------- Initialize Tables --------
 async function initTables() {
@@ -122,7 +119,17 @@ app.get("/me", (req, res) => {
   else res.status(401).json({ error: "Not logged in" });
 });
 
-// -------- Protect Chat Route --------
+// -------- STATIC + ROUTING FIX --------
+
+// serve static files but without auto index
+app.use(express.static(path.join(__dirname, "public"), { index: false }));
+
+// root always goes to login
+app.get("/", (req, res) => {
+  res.redirect("/login.html");
+});
+
+// only authenticated users can access chat
 app.get("/chat", (req, res) => {
   if (!req.session.user) {
     return res.redirect("/login.html");
