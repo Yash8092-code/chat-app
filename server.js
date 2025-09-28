@@ -7,6 +7,7 @@ const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
 const pgSession = require("connect-pg-simple")(session);
+const mongoose = require("mongoose");
 const path = require("path");
 require("dotenv").config();
 
@@ -16,73 +17,79 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
-// -------- Postgres Connection --------
+// ------------ PostgreSQL (Users + Sessions) ------------
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // needed for Render hosted postgres
+  ssl: { rejectUnauthorized: false }, // Render Postgres requires SSL
 });
 
-// -------- Session Store in Postgres --------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 
 app.use(
   session({
     store: new pgSession({
       pool,
       tableName: "session",
-      createTableIfMissing: true   // <-- auto-create table
+      createTableIfMissing: true,
     }),
     secret: "super-secret-key", 
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 } 
+    cookie: { maxAge: 1000 * 60 * 60 },
   })
 );
 
-// -------- Initialize Tables --------
-async function initTables() {
+async function initPgTables() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username VARCHAR(50) NOT NULL,
-      email VARCHAR(100) NOT NULL UNIQUE,
+      email VARCHAR(100) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id SERIAL PRIMARY KEY,
-      username VARCHAR(50) NOT NULL,
-      text TEXT NOT NULL,
-      reply_user VARCHAR(50),
-      reply_text TEXT,
-      time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  console.log("✅ Tables ensured");
+  console.log("✅ Postgres users table ready");
 }
-initTables();
+initPgTables();
 
-// -------- Auth Routes --------
+// ------------ MongoDB (Messages) ------------
+
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => console.log("✅ MongoDB connected (messages)"))
+  .catch((err) => console.error("❌ MongoDB error", err));
+
+const messageSchema = new mongoose.Schema({
+  user: String,
+  text: String,
+  replyTo: {
+    user: String,
+    text: String,
+  },
+  time: { type: Date, default: Date.now },
+});
+const Message = mongoose.model("Message", messageSchema);
+
+// ------------ Auth Routes (Postgres) ------------
+
 app.post("/signup", async (req, res) => {
   const { username, email, password } = req.body;
-  if (!username || !email || !password)
-    return res.status(400).json({ error: "All fields required" });
+  if (!username || !email || !password) return res.status(400).json({ error: "All fields required" });
 
   try {
-    const userCheck = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
-    if (userCheck.rows.length) return res.status(400).json({ error: "Email already exists" });
+    const check = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
+    if (check.rows.length) return res.status(400).json({ error: "Email already exists" });
 
     const hash = await bcrypt.hash(password, 10);
-    await pool.query(
-      "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)",
-      [username, email, hash]
-    );
+    await pool.query("INSERT INTO users (username, email, password) VALUES ($1,$2,$3)", [
+      username,
+      email,
+      hash,
+    ]);
+
     res.json({ success: true });
   } catch (err) {
     console.error("❌ Signup error", err);
@@ -92,11 +99,10 @@ app.post("/signup", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password)
-    return res.status(400).json({ error: "All fields required" });
+  if (!email || !password) return res.status(400).json({ error: "All fields required" });
 
   try {
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const result = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
     if (!result.rows.length) return res.status(401).json({ error: "Invalid credentials" });
 
     const user = result.rows[0];
@@ -116,7 +122,8 @@ app.get("/me", (req, res) => {
   else res.status(401).json({ error: "Not logged in" });
 });
 
-// -------- Routing --------
+// ------------ Routing ------------
+
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/", (req, res) => {
@@ -124,64 +131,48 @@ app.get("/", (req, res) => {
 });
 
 app.get("/chat", (req, res) => {
-  if (!req.session.user) {
-    return res.redirect("/login.html");
-  }
+  if (!req.session.user) return res.redirect("/login.html");
   res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
-// -------- Socket.IO Chat --------
+// ------------ Socket.IO with MongoDB ------------
+
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
-  // send last 20 messages
-  (async () => {
-    try {
-      const result = await pool.query(
-        "SELECT * FROM messages ORDER BY time ASC LIMIT 20"
-      );
-      socket.emit(
-        "chat history",
-        result.rows.map((m) => ({
-          user: m.username,
-          text: m.text,
-          replyTo: m.reply_user
-            ? { user: m.reply_user, text: m.reply_text }
-            : null,
-          time: m.time,
-        }))
-      );
-    } catch (err) {
-      console.error("❌ Error fetching history:", err);
-    }
-  })();
+  // Send last 20 messages from Mongo
+  Message.find().sort({ time: 1 }).limit(20).then((msgs) => {
+    socket.emit("chat history", msgs);
+  });
 
+  // Save + broadcast new message
   socket.on("chat message", async (msg) => {
     try {
-      await pool.query(
-        "INSERT INTO messages (username, text, reply_user, reply_text) VALUES ($1, $2, $3, $4)",
-        [msg.user, msg.text, msg.replyTo?.user || null, msg.replyTo?.text || null]
-      );
-      io.emit("chat message", msg);
+      const newMsg = new Message({
+        user: msg.user,
+        text: msg.text,
+        replyTo: msg.replyTo || null,
+      });
+      await newMsg.save();
+      io.emit("chat message", newMsg);
     } catch (err) {
-      console.error("❌ Error saving message:", err);
+      console.error("❌ Error saving message", err);
     }
   });
 
+  // Clear chat from Mongo
   socket.on("clear chat", async () => {
     try {
-      await pool.query("DELETE FROM messages");
+      await Message.deleteMany({});
       io.emit("chat cleared");
     } catch (err) {
-      console.error("❌ Error clearing chat:", err);
+      console.error("❌ Error clearing chat", err);
     }
   });
 
+  // Alerts (just broadcast, no DB)
   socket.on("send alert", (data) => {
-    io.emit("alert", {
-      sender: data.user,
-      text: data.text || "⚠️ ALERT!",
-    });
+    io.emit("alert", { sender: data.user, text: data.text || "⚠️ ALERT!" });
   });
 
   socket.on("disconnect", () => {
@@ -189,7 +180,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// -------- Start Server --------
+// ------------ Start Server ------------
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
