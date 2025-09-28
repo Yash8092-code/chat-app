@@ -4,7 +4,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const mysql = require("mysql2");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs"); // we use bcryptjs for cross-platform support
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 const path = require("path");
@@ -16,7 +16,7 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
-// -------- MySQL Database Connection --------
+// -------- MySQL Connection --------
 const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -24,7 +24,7 @@ const db = mysql.createPool({
   database: process.env.DB_NAME,
 }).promise();
 
-// -------- Session Store in MySQL --------
+// -------- Session Store --------
 const sessionStore = new MySQLStore({}, db);
 
 app.use(express.json());
@@ -32,7 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     key: "chat_sid",
-    secret: "super-secret-key",   // replace with env secret
+    secret: "super-secret-key",
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
@@ -66,7 +66,6 @@ async function initTables() {
         time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-
     console.log("✅ Tables ensured");
   } catch (err) {
     console.error("❌ Error creating tables:", err);
@@ -123,7 +122,7 @@ app.get("/me", (req, res) => {
   else res.status(401).json({ error: "Not logged in" });
 });
 
-// -------- Protect Chat Page --------
+// -------- Protect Chat Route --------
 app.get("/chat", (req, res) => {
   if (!req.session.user) {
     return res.redirect("/login.html");

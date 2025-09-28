@@ -4,190 +4,26 @@
     <title>Chat App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: #ece5dd;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        height: 100vh;
-      }
-
-      h2 {
-        margin: 0;
-        background: #075e54;
-        color: white;
-        padding: 12px;
-        width: 100%;
-        text-align: center;
-        font-size: 1.2em;
-      }
-
-      #chat-screen {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 100%;
-        height: 100%;
-        max-width: 600px;
-      }
-
-      #messages {
-        list-style: none;
-        padding: 10px;
-        margin: 0;
-        width: 100%;
-        flex: 1;
-        overflow-y: auto;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-        display: flex;
-        flex-direction: column;
-      }
-
-      #messages li {
-        max-width: 80%;
-        margin: 5px 0;
-        padding: 8px 12px;
-        border-radius: 15px;
-        line-height: 1.4;
-        word-wrap: break-word;
-        font-size: 0.95em;
-        position: relative;
-        cursor: pointer;
-      }
-
-      .my-message {
-        align-self: flex-end;
-        background: #dcf8c6;
-        border-bottom-right-radius: 0;
-      }
-
-      .other-message {
-        align-self: flex-start;
-        background: #ffffff;
-        border: 1px solid #ececec;
-        border-bottom-left-radius: 0;
-      }
-
-      .reply-box {
-        font-size: 0.8em;
-        color: #444;
-        border-left: 3px solid #888;
-        margin-bottom: 5px;
-        padding-left: 6px;
-        opacity: 0.8;
-      }
-
-      #reply-preview {
-        display: none;
-        width: 100%;
-        max-width: 600px;
-        background: #f1f1f1;
-        border-left: 4px solid #075e54;
-        padding: 6px;
-        font-size: 0.9em;
-        margin-bottom: 5px;
-      }
-
-      #reply-preview span {
-        font-weight: bold;
-      }
-
-      form {
-        display: flex;
-        width: 100%;
-        max-width: 600px;
-        margin-top: 5px;
-        background: #f0f0f0;
-        padding: 5px;
-        border-radius: 25px;
-      }
-
-      input {
-        flex: 1;
-        padding: 10px;
-        border: none;
-        border-radius: 20px;
-        outline: none;
-        font-size: 1em;
-      }
-
-      button {
-        background: #075e54;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        margin-left: 5px;
-        border-radius: 50%;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-
-      button:hover {
-        background: #128c7e;
-      }
-
-      #clear-btn {
-        margin: 8px 0;
-        background: #d9534f;
-        border-radius: 25px;
-        padding: 10px 16px;
-        cursor: pointer;
-        font-size: 0.9em;
-        border: none;
-        color: white;
-        width: 140px;
-        text-align: center;
-      }
-
-      #clear-btn:hover {
-        background: #c9302c;
-      }
-
-      #alert-box {
-        display: none;
-        position: fixed;
-        top: 20px;
-        width: 90%;
-        max-width: 500px;
-        margin: auto;
-        z-index: 1000;
-        background: #d9534f;
-        color: white;
-        font-weight: bold;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
-        animation: pulse 1s infinite;
-      }
-
-      @keyframes pulse {
-        0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.05); opacity: 0.8; }
-        100% { transform: scale(1); opacity: 1; }
-      }
-
-      #alert-btn {
-        margin: 5px 0;
-        background: #ff0000;
-        border-radius: 25px;
-        padding: 10px 16px;
-        cursor: pointer;
-        font-size: 0.9em;
-        border: none;
-        color: white;
-        width: 160px;
-        text-align: center;
-      }
-
-      #alert-btn:hover {
-        background: #b30000;
-      }
+      body { font-family: "Segoe UI", Tahoma, sans-serif; background: #ece5dd; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; }
+      h2 { margin: 0; background: #075e54; color: white; padding: 12px; width: 100%; text-align: center; font-size: 1.2em; }
+      #chat-screen { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; max-width: 600px; }
+      #messages { list-style: none; padding: 10px; margin: 0; width: 100%; flex: 1; overflow-y: auto; background: #fff; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
+      #messages li { max-width: 80%; margin: 5px 0; padding: 8px 12px; border-radius: 15px; line-height: 1.4; word-wrap: break-word; font-size: 0.95em; position: relative; cursor: pointer; }
+      .my-message { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 0; }
+      .other-message { align-self: flex-start; background: #ffffff; border: 1px solid #ececec; border-bottom-left-radius: 0; }
+      .reply-box { font-size: 0.8em; color: #444; border-left: 3px solid #888; margin-bottom: 5px; padding-left: 6px; opacity: 0.8; }
+      #reply-preview { display: none; width: 100%; max-width: 600px; background: #f1f1f1; border-left: 4px solid #075e54; padding: 6px; font-size: 0.9em; margin-bottom: 5px; }
+      #reply-preview span { font-weight: bold; }
+      form { display: flex; width: 100%; max-width: 600px; margin-top: 5px; background: #f0f0f0; padding: 5px; border-radius: 25px; }
+      input { flex: 1; padding: 10px; border: none; border-radius: 20px; outline: none; font-size: 1em; }
+      button { background: #075e54; color: white; border: none; padding: 10px 15px; margin-left: 5px; border-radius: 50%; cursor: pointer; transition: background 0.2s; }
+      button:hover { background: #128c7e; }
+      #clear-btn { margin: 8px 0; background: #d9534f; border-radius: 25px; padding: 10px 16px; cursor: pointer; font-size: 0.9em; border: none; color: white; width: 140px; text-align: center; }
+      #clear-btn:hover { background: #c9302c; }
+      #alert-box { display: none; position: fixed; top: 20px; width: 90%; max-width: 500px; margin: auto; z-index: 1000; background: #d9534f; color: white; font-weight: bold; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 3px 8px rgba(0,0,0,0.3); animation: pulse 1s infinite; }
+      @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+      #alert-btn { margin: 5px 0; background: #ff0000; border-radius: 25px; padding: 10px 16px; cursor: pointer; font-size: 0.9em; border: none; color: white; width: 160px; text-align: center; }
+      #alert-btn:hover { background: #b30000; }
     </style>
   </head>
   <body>
@@ -196,9 +32,7 @@
 
     <div id="chat-screen">
       <ul id="messages"></ul>
-
       <div id="reply-preview"></div>
-
       <form id="form">
         <input id="input" autocomplete="off" placeholder="Type a message..." />
         <button>➤</button>
@@ -206,9 +40,6 @@
       <button id="clear-btn">🗑️ Clear Chat</button>
       <button id="alert-btn">🚨 Send Alert</button>
     </div>
-
-    <!-- ✅ Fallback local audio -->
-    <audio id="alert-sound" src="/alert.mp3" preload="auto"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -221,15 +52,26 @@
       const replyPreview = document.getElementById("reply-preview");
       const alertBox = document.getElementById("alert-box");
       const alertBtn = document.getElementById("alert-btn");
-      const alertSound = document.getElementById("alert-sound");
 
-      let USERNAME = prompt("Enter your name:") || "Anonymous";
+      let USERNAME = "Anonymous";
+
+      // ✅ Fetch the logged-in user's name from /me
+      fetch("/me")
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error("Not logged in");
+        })
+        .then(data => {
+          if (data.user) {
+            USERNAME = data.user.username;
+            console.log("Logged in as:", USERNAME);
+          }
+        })
+        .catch(() => {
+          console.warn("Defaulting to Anonymous");
+        });
+
       let replyTo = null;
-
-      // Request system notification permission
-      if ("Notification" in window && Notification.permission !== "granted") {
-        Notification.requestPermission();
-      }
 
       function addMessage(msg) {
         const li = document.createElement("li");
@@ -250,15 +92,13 @@
         li.addEventListener("click", () => {
           replyTo = { user: msg.user, text: msg.text };
           replyPreview.style.display = "block";
-          replyPreview.innerHTML =
-            "<span>Replying to " + replyTo.user + ":</span> " + replyTo.text;
+          replyPreview.innerHTML = "<span>Replying to " + replyTo.user + ":</span> " + replyTo.text;
         });
 
         messages.appendChild(li);
         messages.scrollTop = messages.scrollHeight;
       }
 
-      // Chat events
       socket.on("chat history", (msgs) => msgs.forEach(addMessage));
       socket.on("chat message", (msg) => addMessage(msg));
       socket.on("chat cleared", () => {
@@ -283,33 +123,11 @@
         }
       });
 
-      // On ALERT
       socket.on("alert", (data) => {
         alertBox.textContent = data.text + " 🚨 (from " + data.sender + ")";
         alertBox.style.display = "block";
-
-        // System Notification
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("🚨 Chat Alert", {
-            body: data.text + " (from " + data.sender + ")",
-            icon: "/icon.png"
-          });
-        }
-
-        // Play fallback sound
-        alertSound.currentTime = 0;
-        alertSound.play().catch(err => console.warn("Play blocked:", err));
-
-        // Vibrate
-        if (navigator.vibrate) {
-          navigator.vibrate([300, 150, 300]);
-        }
-
-        setTimeout(() => {
-          alertBox.style.display = "none";
-          alertSound.pause();
-          alertSound.currentTime = 0;
-        }, 5000);
+        if (navigator.vibrate) navigator.vibrate([200,100,200]);
+        setTimeout(() => { alertBox.style.display = "none"; }, 5000);
       });
 
       alertBtn.addEventListener("click", () => {

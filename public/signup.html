@@ -2,18 +2,33 @@
 <html>
 <head>
   <title>Signup | Chat App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#ece5dd; }
-    form { background:#fff; padding:20px; border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,.2); width:300px; display:flex; flex-direction:column; }
-    input { margin-bottom:10px; padding:10px; border-radius:6px; border:1px solid #ccc; }
-    button { padding:10px; border:none; border-radius:6px; background:#075e54; color:#fff; cursor:pointer; }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      display:flex; align-items:center; justify-content:center;
+      background:#ece5dd; height:100vh; margin:0;
+    }
+    form {
+      background:#fff; padding:20px; border-radius:10px;
+      box-shadow:0 3px 8px rgba(0,0,0,.2);
+      width:300px; display:flex; flex-direction:column;
+    }
+    input {
+      margin-bottom:10px; padding:10px; border-radius:6px;
+      border:1px solid #ccc; font-size:1em;
+    }
+    button {
+      background:#075e54; color:white; border:none;
+      padding:10px; border-radius:6px; cursor:pointer;
+    }
     button:hover { background:#128c7e; }
-    a { margin-top:10px; text-align:center; display:block; }
+    a { margin-top:10px; text-align:center; display:block; color:#075e54; }
   </style>
 </head>
 <body>
   <form id="signupForm">
-    <h2>Signup</h2>
+    <h2>📝 Signup</h2>
     <input type="text" id="username" placeholder="Username" required />
     <input type="email" id="email" placeholder="Email" required />
     <input type="password" id="password" placeholder="Password" required />
@@ -27,11 +42,13 @@
       const username = document.getElementById("username").value;
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
+
       const res = await fetch("/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password })
       });
+
       const data = await res.json();
       if (data.success) {
         alert("Signup successful! Please login.");
