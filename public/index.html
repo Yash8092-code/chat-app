@@ -4,32 +4,252 @@
     <title>Chat App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-      body { font-family: "Segoe UI", Tahoma, sans-serif; background: #ece5dd; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; }
-      h2 { margin: 0; background: #075e54; color: white; padding: 12px; width: 100%; text-align: center; font-size: 1.2em; position: relative; }
-      #profile-icon { position: absolute; right: 15px; top: 8px; cursor: pointer; font-size: 22px; }
-      #profile-menu { display: none; position: absolute; right: 10px; top: 45px; background: white; border-radius: 6px; box-shadow: 0 3px 6px rgba(0,0,0,0.2); width: 200px; padding: 10px; z-index: 1000; }
-      #profile-menu p { margin: 5px 0; font-size: 0.9em; }
-      #logout-btn { display: block; background: #d9534f; color: white; border: none; padding: 8px; margin-top: 8px; width: 100%; border-radius: 6px; cursor: pointer; }
-      #logout-btn:hover { background: #c9302c; }
+      body {
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: #ece5dd;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100vh;
+      }
+      h2 {
+        margin: 0;
+        background: #075e54;
+        color: white;
+        padding: 12px;
+        width: 100%;
+        text-align: center;
+        font-size: 1.2em;
+        position: relative;
+      }
+      /* Profile icon/menu */
+      #profile-icon {
+        position: absolute;
+        right: 15px;
+        top: 8px;
+        cursor: pointer;
+        font-size: 22px;
+      }
+      #profile-menu {
+        display: none;
+        position: absolute;
+        right: 10px;
+        top: 45px;
+        background: white;
+        border-radius: 6px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+        width: 220px;
+        padding: 10px;
+        z-index: 1000;
+      }
+      #profile-menu img {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: block;
+        margin: 0 auto 10px auto;
+      }
+      #profile-menu p {
+        margin: 5px 0;
+        font-size: 0.9em;
+        text-align: center;
+      }
+      #avatar-url {
+        width: 100%;
+        padding: 6px;
+        margin-top: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      #change-avatar {
+        margin-top: 6px;
+        width: 100%;
+        background: #128c7e;
+        color: white;
+        border: none;
+        padding: 8px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #change-avatar:hover {
+        background: #0d6d63;
+      }
+      #logout-btn {
+        display: block;
+        background: #d9534f;
+        color: white;
+        border: none;
+        padding: 8px;
+        margin-top: 8px;
+        width: 100%;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #logout-btn:hover {
+        background: #c9302c;
+      }
 
-      #chat-screen { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; max-width: 600px; }
-      #messages { list-style: none; padding: 10px; margin: 0; width: 100%; flex: 1; overflow-y: auto; background: #fff; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
-      #messages li { max-width: 80%; margin: 5px 0; padding: 8px 12px; border-radius: 15px; line-height: 1.4; word-wrap: break-word; font-size: 0.95em; cursor: pointer; }
-      .my-message { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 0; }
-      .other-message { align-self: flex-start; background: #ffffff; border: 1px solid #ececec; border-bottom-left-radius: 0; }
-      .reply-box { font-size: 0.8em; color: #444; border-left: 3px solid #888; margin-bottom: 5px; padding-left: 6px; opacity: 0.8; }
-      #reply-preview { display: none; width: 100%; max-width: 600px; background: #f1f1f1; border-left: 4px solid #075e54; padding: 6px; font-size: 0.9em; margin-bottom: 5px; }
-      #reply-preview span { font-weight: bold; }
-      form { display: flex; width: 100%; max-width: 600px; margin-top: 5px; background: #f0f0f0; padding: 5px; border-radius: 25px; }
-      input { flex: 1; padding: 10px; border: none; border-radius: 20px; outline: none; font-size: 1em; }
-      button { background: #075e54; color: white; border: none; padding: 10px 15px; margin-left: 5px; border-radius: 50%; cursor: pointer; transition: background 0.2s; }
-      button:hover { background: #128c7e; }
-      #clear-btn { margin: 8px 0; background: #d9534f; border-radius: 25px; padding: 10px 16px; cursor: pointer; font-size: 0.9em; border: none; color: white; width: 140px; text-align: center; }
-      #clear-btn:hover { background: #c9302c; }
-      #alert-box { display: none; position: fixed; top: 20px; width: 90%; max-width: 500px; margin: auto; z-index: 1000; background: #d9534f; color: white; font-weight: bold; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 3px 8px rgba(0,0,0,0.3); animation: pulse 1s infinite; }
-      @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
-      #alert-btn { margin: 5px 0; background: #ff0000; border-radius: 25px; padding: 10px 16px; cursor: pointer; font-size: 0.9em; border: none; color: white; width: 160px; text-align: center; }
-      #alert-btn:hover { background: #b30000; }
+      #chat-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        max-width: 600px;
+      }
+      #messages {
+        list-style: none;
+        padding: 10px;
+        margin: 0;
+        width: 100%;
+        flex: 1;
+        overflow-y: auto;
+        border-radius: 10px;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+
+        /* ✅ Background wallpaper */
+        background: url("https://t4.ftcdn.net/jpg/02/56/16/81/360_F_256168166_FkPp1V3uVMxdLbd51c+BackgroundChat.jpg")
+          no-repeat center center;
+        background-size: cover;
+      }
+      #messages li {
+        max-width: 80%;
+        margin: 5px 0;
+        padding: 8px 12px;
+        border-radius: 15px;
+        line-height: 1.4;
+        word-wrap: break-word;
+        font-size: 0.95em;
+        display: flex;
+        align-items: flex-end;
+      }
+      .message-content {
+        max-width: 85%;
+      }
+      .avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+      .my-message {
+        align-self: flex-end;
+        background: #dcf8c6;
+        border-bottom-right-radius: 0;
+      }
+      .other-message {
+        align-self: flex-start;
+        background: #ffffff;
+        border: 1px solid #ececec;
+        border-bottom-left-radius: 0;
+      }
+      .reply-box {
+        font-size: 0.8em;
+        color: #444;
+        border-left: 3px solid #888;
+        margin-bottom: 5px;
+        padding-left: 6px;
+        opacity: 0.8;
+      }
+      #reply-preview {
+        display: none;
+        width: 100%;
+        max-width: 600px;
+        background: #f1f1f1;
+        border-left: 4px solid #075e54;
+        padding: 6px;
+        font-size: 0.9em;
+        margin-bottom: 5px;
+      }
+      #reply-preview span {
+        font-weight: bold;
+      }
+      form {
+        display: flex;
+        width: 100%;
+        max-width: 600px;
+        margin-top: 5px;
+        background: #f0f0f0;
+        padding: 5px;
+        border-radius: 25px;
+      }
+      input {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 20px;
+        outline: none;
+        font-size: 1em;
+      }
+      button {
+        background: #075e54;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        margin-left: 5px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: #128c7e;
+      }
+      #clear-btn {
+        margin: 8px 0;
+        background: #d9534f;
+        border-radius: 25px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 0.9em;
+        border: none;
+        color: white;
+        width: 140px;
+        text-align: center;
+      }
+      #clear-btn:hover {
+        background: #c9302c;
+      }
+      #alert-box {
+        display: none;
+        position: fixed;
+        top: 20px;
+        width: 90%;
+        max-width: 500px;
+        margin: auto;
+        z-index: 1000;
+        background: #d9534f;
+        color: white;
+        font-weight: bold;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        animation: pulse 1s infinite;
+      }
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      #alert-btn {
+        margin: 5px 0;
+        background: #ff0000;
+        border-radius: 25px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 0.9em;
+        border: none;
+        color: white;
+        width: 160px;
+        text-align: center;
+      }
+      #alert-btn:hover {
+        background: #b30000;
+      }
     </style>
   </head>
   <body>
@@ -37,6 +257,9 @@
     <h2>💬 Chat App
       <span id="profile-icon">👤</span>
       <div id="profile-menu">
+        <img id="profile-pic" src="/default-avatar.png" alt="avatar">
+        <input type="text" id="avatar-url" placeholder="Paste avatar image URL">
+        <button id="change-avatar">Change Avatar</button>
         <p><strong id="profile-name">Username</strong></p>
         <p id="profile-email">Email</p>
         <button id="logout-btn">Logout</button>
@@ -58,35 +281,36 @@
     <script>
       const socket = io("/", { transports: ["websocket", "polling"] });
 
-      const form = document.getElementById("form");
-      const input = document.getElementById("input");
       const messages = document.getElementById("messages");
-      const clearBtn = document.getElementById("clear-btn");
       const replyPreview = document.getElementById("reply-preview");
       const alertBox = document.getElementById("alert-box");
-      const alertBtn = document.getElementById("alert-btn");
 
-      // Profile menu elems
       const profileIcon = document.getElementById("profile-icon");
       const profileMenu = document.getElementById("profile-menu");
-      const logoutBtn = document.getElementById("logout-btn");
+      const profilePic = document.getElementById("profile-pic");
       const profileName = document.getElementById("profile-name");
       const profileEmail = document.getElementById("profile-email");
+      const logoutBtn = document.getElementById("logout-btn");
+      const changeAvatarBtn = document.getElementById("change-avatar");
 
       let USERNAME = "Anonymous";
+      let AVATAR_URL = "/default-avatar.png";
+      let replyTo = null;
 
-      // ✅ Fetch logged-in user info
+      // ✅ Fetch user info
       fetch("/me")
         .then(res => res.json())
         .then(data => {
           if (data.user) {
             USERNAME = data.user.username;
-            profileName.textContent = data.user.username;
+            AVATAR_URL = data.user.avatar_url || "/default-avatar.png";
+            profileName.textContent = USERNAME;
             profileEmail.textContent = data.user.email;
+            profilePic.src = AVATAR_URL;
           }
         });
 
-      // Show/hide profile menu
+      // Toggle profile dropdown
       profileIcon.addEventListener("click", () => {
         profileMenu.style.display = profileMenu.style.display === "block" ? "none" : "block";
       });
@@ -97,59 +321,87 @@
         window.location.href = "/login.html";
       });
 
-      let replyTo = null;
+      // Change avatar
+      changeAvatarBtn.addEventListener("click", async () => {
+        const newUrl = document.getElementById("avatar-url").value;
+        if (newUrl.trim()) {
+          const res = await fetch("/update-avatar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avatarUrl: newUrl })
+          });
+          const data = await res.json();
+          if (data.success) {
+            AVATAR_URL = newUrl;
+            profilePic.src = newUrl;
+            alert("Profile picture updated!");
+          } else {
+            alert("Error updating avatar");
+          }
+        }
+      });
 
+      // Add message
       function addMessage(msg) {
         const li = document.createElement("li");
+        li.className = msg.user === USERNAME ? "my-message" : "other-message";
 
+        const avatar = document.createElement("img");
+        avatar.src = msg.avatar_url || "/default-avatar.png";
+        avatar.className = "avatar";
+
+        const content = document.createElement("div");
+        content.className = "message-content";
         if (msg.replyTo) {
           const replyDiv = document.createElement("div");
           replyDiv.className = "reply-box";
           replyDiv.textContent = msg.replyTo.user + ": " + msg.replyTo.text;
-          li.appendChild(replyDiv);
+          content.appendChild(replyDiv);
         }
+        content.appendChild(document.createTextNode(msg.user + ": " + msg.text));
 
-        const mainText = document.createElement("div");
-        mainText.textContent = msg.user + ": " + msg.text;
-        li.appendChild(mainText);
-
-        li.className = msg.user === USERNAME ? "my-message" : "other-message";
-
+        li.appendChild(avatar);
+        li.appendChild(content);
         messages.appendChild(li);
         messages.scrollTop = messages.scrollHeight;
       }
 
+      // Socket listeners
       socket.on("chat history", (msgs) => msgs.forEach(addMessage));
       socket.on("chat message", (msg) => addMessage(msg));
       socket.on("chat cleared", () => {
         messages.innerHTML = "";
-        addMessage({ user: "System", text: "Chat was cleared 🗑️" });
+        addMessage({ user: "System", text: "Chat was cleared 🗑️", avatar_url: "" });
       });
 
-      form.addEventListener("submit", (e) => {
+      // Form submit
+      document.getElementById("form").addEventListener("submit", (e) => {
         e.preventDefault();
+        const input = document.getElementById("input");
         if (input.value.trim()) {
           const text = input.value.trim();
-          socket.emit("chat message", { user: USERNAME, text, replyTo });
+          socket.emit("chat message", { user: USERNAME, avatar_url: AVATAR_URL, text, replyTo });
           input.value = "";
           replyTo = null;
           replyPreview.style.display = "none";
         }
       });
 
-      clearBtn.addEventListener("click", () => {
-        if (confirm("Are you sure you want to delete all chats?")) {
+      // Clear chat
+      document.getElementById("clear-btn").addEventListener("click", () => {
+        if (confirm("Delete all chats?")) {
           socket.emit("clear chat");
         }
       });
 
+      // Alerts
       socket.on("alert", (data) => {
         alertBox.textContent = data.text + " 🚨 (from " + data.sender + ")";
         alertBox.style.display = "block";
         setTimeout(() => { alertBox.style.display = "none"; }, 5000);
       });
 
-      alertBtn.addEventListener("click", () => {
+      document.getElementById("alert-btn").addEventListener("click", () => {
         const text = prompt("Enter alert message:") || "⚠️ ALERT!";
         socket.emit("send alert", { user: USERNAME, text });
       });
