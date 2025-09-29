@@ -33,13 +33,22 @@
       #clear-btn:hover { background:#c9302c; }
       #alert-btn:hover { background:#b30000; }
       #alert-box { display:none; position:fixed; top:20px; width:90%; max-width:500px; margin:auto; z-index:1000; background:#d9534f; color:white; font-weight:bold; padding:15px; border-radius:10px; text-align:center; box-shadow:0 3px 8px rgba(0,0,0,0.3); }
-      
-      /* Styles for Online Users List */
+
       #online-users-container { width:100%; max-width:600px; background:white; padding:5px 10px; margin-bottom:5px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); box-sizing: border-box; }
       #online-users-container h3 { margin:5px 0; font-size:0.9em; color:#075e54; }
       #online-users-list { display:flex; flex-wrap:wrap; gap:10px; }
       .user-item { display:flex; align-items:center; font-size:0.85em; background:#f0f0f0; padding: 3px 8px; border-radius:15px; }
       .user-item img { width:20px; height:20px; border-radius:50%; margin-right:5px; }
+
+      /* 👇 CSS for Typing Indicator */
+      #typing-indicator { width: 100%; padding: 0 10px; box-sizing: border-box; height: 35px; /* Reserve space to prevent layout shifts */ }
+      .typing-bubble { display: inline-flex; align-items: center; background: #e9e9e9; padding: 5px 10px; border-radius: 15px; border-bottom-left-radius: 0; animation: fadeIn 0.3s; }
+      .typing-bubble img { width: 20px; height: 20px; border-radius: 50%; margin-right: 8px; }
+      .typing-dots span { display: inline-block; width: 4px; height: 4px; background: #888; border-radius: 50%; margin: 0 1px; animation: typing-blink 1.4s infinite both; }
+      .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+      .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+      @keyframes typing-blink { 0% { opacity: 0.2; } 20% { opacity: 1; } 100% { opacity: 0.2; } }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
   </head>
   <body>
@@ -63,6 +72,7 @@
 
     <div id="chat-screen">
       <ul id="messages"></ul>
+      <div id="typing-indicator"></div>
       <div id="reply-preview"></div>
       <form id="form">
         <input id="input" autocomplete="off" placeholder="Type a message..." />
@@ -77,6 +87,10 @@
       const socket = io("/", { transports: ["websocket", "polling"] });
 
       let USERNAME = "Anonymous", AVATAR_URL = "/default-avatar.png", replyTo = null;
+      // 👇 JS for Typing Indicator
+      let typingTimer;
+      const TYPING_TIMEOUT = 2000; // 2 seconds
+      let isTyping = false;
 
       fetch("/me").then(r => r.json()).then(data => {
         if (data.user) {
@@ -85,8 +99,6 @@
           document.getElementById("profile-name").textContent = USERNAME;
           document.getElementById("profile-email").textContent = data.user.email;
           document.getElementById("profile-pic").src = AVATAR_URL;
-          
-          // Announce that this user has connected
           socket.emit('user connected', { username: USERNAME, avatar_url: AVATAR_URL });
         }
       });
@@ -114,11 +126,9 @@
       function addMessage(msg) {
         const li = document.createElement("li");
         li.className = msg.user === USERNAME ? "my-message" : "other-message";
-
         const avatar = document.createElement("img");
         avatar.src = msg.avatar_url || "/default-avatar.png";
         avatar.className = "avatar";
-
         const content = document.createElement("div");
         if (msg.replyTo) {
           const rd = document.createElement("div");
@@ -129,36 +139,27 @@
         const main = document.createElement("div");
         main.textContent = msg.user + ": " + msg.text;
         content.appendChild(main);
-
         if (msg.time) {
           const ts = document.createElement("div");
           ts.className = "timestamp";
           ts.textContent = new Date(msg.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
           content.appendChild(ts);
         }
-
         li.appendChild(avatar);
         li.appendChild(content);
-        
         const messages = document.getElementById("messages");
         messages.appendChild(li);
-        
-        // Auto-scroll to the bottom
         messages.scrollTop = messages.scrollHeight;
-
         li.onclick = () => {
           replyTo = { user: msg.user, text: msg.text };
           const preview = document.getElementById("reply-preview");
-          
-          // Securely set the reply preview to prevent XSS
-          preview.innerHTML = ''; // Clear previous content
+          preview.innerHTML = '';
           const boldEl = document.createElement('b');
           boldEl.textContent = "Replying to " + replyTo.user + ": ";
           preview.appendChild(boldEl);
-          preview.append(replyTo.text); // Safely appends the text
-
+          preview.append(replyTo.text);
           preview.style.display = "block";
-          document.getElementById("input").focus(); // Focus input field on reply
+          document.getElementById("input").focus();
         };
       }
 
@@ -166,34 +167,65 @@
       socket.on("chat message", msg => addMessage(msg));
       socket.on("chat cleared", () => { document.getElementById("messages").innerHTML = ""; addMessage({ user: "System", text: "Chat cleared", time: new Date() }); });
       
-      // Listener for the online user list
       socket.on("update user list", (users) => {
         const userCount = document.getElementById("user-count");
         const userList = document.getElementById("online-users-list");
-
         userCount.textContent = users.length;
-        userList.innerHTML = ""; // Clear the list before re-rendering
-
+        userList.innerHTML = "";
         users.forEach(user => {
           const userItem = document.createElement("div");
           userItem.className = "user-item";
-
           const avatar = document.createElement("img");
           avatar.src = user.avatar_url || "/default-avatar.png";
-          
           const username = document.createElement("span");
           username.textContent = user.username;
-
           userItem.appendChild(avatar);
           userItem.appendChild(username);
           userList.appendChild(userItem);
         });
       });
 
+      // 👇 JS Listeners for Typing Indicator
+      socket.on('user typing start', (user) => {
+        const indicatorContainer = document.getElementById('typing-indicator');
+        if (document.getElementById(`typing-${user.username}`)) return; // Prevent duplicates
+        const bubble = document.createElement('div');
+        bubble.className = 'typing-bubble';
+        bubble.id = `typing-${user.username}`;
+        bubble.innerHTML = `
+            <img src="${user.avatar_url || '/default-avatar.png'}" alt="avatar">
+            <div class="typing-dots"><span></span><span></span><span></span></div>`;
+        indicatorContainer.appendChild(bubble);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+      });
+
+      socket.on('user typing stop', (user) => {
+        const indicator = document.getElementById(`typing-${user.username}`);
+        if (indicator) {
+            indicator.remove();
+        }
+      });
+
+      // 👇 JS Event listener for the input field
+      document.getElementById('input').addEventListener('input', () => {
+        clearTimeout(typingTimer);
+        if (!isTyping) {
+            socket.emit('typing start');
+            isTyping = true;
+        }
+        typingTimer = setTimeout(() => {
+            socket.emit('typing stop');
+            isTyping = false;
+        }, TYPING_TIMEOUT);
+      });
+
       document.getElementById("form").onsubmit = (e) => {
         e.preventDefault();
         const input = document.getElementById("input");
         if (input.value.trim()) {
+          clearTimeout(typingTimer); // Stop timer
+          socket.emit('typing stop');     // Tell others you stopped typing
+          isTyping = false;             // Reset flag
           socket.emit("chat message", { user: USERNAME, avatar_url: AVATAR_URL, text: input.value.trim(), replyTo });
           input.value = ""; replyTo = null; document.getElementById("reply-preview").style.display = "none";
         }

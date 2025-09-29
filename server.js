@@ -77,14 +77,14 @@ const messageSchema = new mongoose.Schema({
 const Message = mongoose.model("Message", messageSchema);
 
 // Object to store active users
-let activeUsers = {}; 
+let activeUsers = {};
 
 // ------------ Auth Routes (Postgres) ------------
 
 // Add rate limiting to prevent brute-force attacks
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, 
+    max: 10,
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many requests, please try again after 15 minutes.'
@@ -184,24 +184,21 @@ app.get("/chat", (req, res) => {
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
-  // Function to broadcast the updated user list to everyone
   const broadcastUserList = () => {
     io.emit("update user list", Object.values(activeUsers));
   };
 
-  // Send chat history to the newly connected user
   Message.find().sort({ time: 1 }).limit(50).then((msgs) => {
     socket.emit("chat history", msgs);
   });
 
-  // Listen for when a user provides their username
   socket.on("user connected", (userData) => {
-    activeUsers[socket.id] = { 
-        username: userData.username, 
-        avatar_url: userData.avatar_url 
+    activeUsers[socket.id] = {
+        username: userData.username,
+        avatar_url: userData.avatar_url
     };
     console.log(`${userData.username} has joined the chat.`);
-    broadcastUserList(); // Send updated list to all clients
+    broadcastUserList();
   });
 
   socket.on("chat message", async (msg) => {
@@ -217,6 +214,19 @@ io.on("connection", (socket) => {
       io.emit("chat message", newMsg);
     } catch (err) {
       console.error("❌ Error saving message", err);
+    }
+  });
+
+  // 👇 ADDED: Listen for typing events and broadcast them
+  socket.on('typing start', () => {
+    if (activeUsers[socket.id]) {
+      socket.broadcast.emit('user typing start', activeUsers[socket.id]);
+    }
+  });
+
+  socket.on('typing stop', () => {
+    if (activeUsers[socket.id]) {
+      socket.broadcast.emit('user typing stop', activeUsers[socket.id]);
     }
   });
 
@@ -240,8 +250,10 @@ io.on("connection", (socket) => {
     const disconnectedUser = activeUsers[socket.id];
     if (disconnectedUser) {
       console.log(`❌ ${disconnectedUser.username} disconnected`);
-      delete activeUsers[socket.id]; // Remove user from the list
-      broadcastUserList(); // Send updated list to all clients
+      // 👇 ADDED: Make sure to broadcast that the user stopped typing on disconnect
+      socket.broadcast.emit('user typing stop', disconnectedUser);
+      delete activeUsers[socket.id];
+      broadcastUserList();
     } else {
       console.log("❌ User disconnected:", socket.id);
     }
