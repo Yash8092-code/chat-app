@@ -9,6 +9,7 @@ const session = require("express-session");
 const pgSession = require("connect-pg-simple")(session);
 const mongoose = require("mongoose");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const app = express();
@@ -34,7 +35,7 @@ app.use(
       tableName: "session",
       createTableIfMissing: true,
     }),
-    secret: "super-secret-key",
+    secret: process.env.SESSION_SECRET || "a-default-fallback-secret", // Use environment variable
     resave: false,
     saveUninitialized: false,
     cookie: { maxAge: 1000 * 60 * 60 }, // 1 hour
@@ -75,9 +76,21 @@ const messageSchema = new mongoose.Schema({
 });
 const Message = mongoose.model("Message", messageSchema);
 
+// Object to store active users
+let activeUsers = {}; 
+
 // ------------ Auth Routes (Postgres) ------------
 
-app.post("/signup", async (req, res) => {
+// Add rate limiting to prevent brute-force attacks
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, 
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many requests, please try again after 15 minutes.'
+});
+
+app.post("/signup", authLimiter, async (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password)
     return res.status(400).json({ error: "All fields required" });
@@ -99,7 +112,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-app.post("/login", async (req, res) => {
+app.post("/login", authLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ error: "All fields required" });
@@ -171,9 +184,24 @@ app.get("/chat", (req, res) => {
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
-  // Send chat history
-  Message.find().sort({ time: 1 }).limit(20).then((msgs) => {
+  // Function to broadcast the updated user list to everyone
+  const broadcastUserList = () => {
+    io.emit("update user list", Object.values(activeUsers));
+  };
+
+  // Send chat history to the newly connected user
+  Message.find().sort({ time: 1 }).limit(50).then((msgs) => {
     socket.emit("chat history", msgs);
+  });
+
+  // Listen for when a user provides their username
+  socket.on("user connected", (userData) => {
+    activeUsers[socket.id] = { 
+        username: userData.username, 
+        avatar_url: userData.avatar_url 
+    };
+    console.log(`${userData.username} has joined the chat.`);
+    broadcastUserList(); // Send updated list to all clients
   });
 
   socket.on("chat message", async (msg) => {
@@ -209,7 +237,14 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ User disconnected:", socket.id);
+    const disconnectedUser = activeUsers[socket.id];
+    if (disconnectedUser) {
+      console.log(`❌ ${disconnectedUser.username} disconnected`);
+      delete activeUsers[socket.id]; // Remove user from the list
+      broadcastUserList(); // Send updated list to all clients
+    } else {
+      console.log("❌ User disconnected:", socket.id);
+    }
   });
 });
 
