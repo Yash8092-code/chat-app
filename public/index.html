@@ -105,6 +105,12 @@
         avatar.src=msg.avatar_url || "/default-avatar.png";
         avatar.className="avatar";
 
+        const messages = document.getElementById("messages");
+        messages.appendChild(li);
+
+        // Add this line to scroll down
+        messages.scrollTop = messages.scrollHeight; 
+
         const content=document.createElement("div");
         if(msg.replyTo){
           const rd=document.createElement("div");
@@ -126,10 +132,17 @@
         li.appendChild(avatar);
         li.appendChild(content);
         document.getElementById("messages").appendChild(li);
-        li.onclick=()=> {
-          replyTo={user:msg.user,text:msg.text};
-          document.getElementById("reply-preview").style.display="block";
-          document.getElementById("reply-preview").innerHTML="<b>Replying to "+replyTo.user+":</b> "+replyTo.text;
+        // This is inside the addMessage function in public/index.html
+        li.onclick = () => {
+            replyTo = { user: msg.user, text: msg.text };
+            document.getElementById("reply-preview").style.display = "block";
+            
+            // NOTE: This .innerHTML line has the XSS vulnerability I mentioned before.
+            // Be sure to fix that as well!
+            document.getElementById("reply-preview").innerHTML = "<b>Replying to " + replyTo.user + ":</b> " + replyTo.text;
+            
+            // Add the new line here 👇
+            document.getElementById("input").focus(); 
         };
       }
 
