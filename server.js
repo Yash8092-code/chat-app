@@ -180,6 +180,14 @@ io.on("connection", (socket) => {
   });
 });
 
+// -------- Logout --------
+app.post("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("chat_sid"); // same key used in session()
+    res.json({ success: true });
+  });
+});
+
 // ------------ Start Server ------------
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => {

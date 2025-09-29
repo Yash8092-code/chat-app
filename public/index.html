@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       body { font-family: "Segoe UI", Tahoma, sans-serif; background: #ece5dd; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; }
-      h2 { margin: 0; background: #075e54; color: white; padding: 12px; width: 100%; text-align: center; font-size: 1.2em; }
+      h2 { margin: 0; background: #075e54; color: white; padding: 12px; width: 100%; text-align: center; font-size: 1.2em; position: relative; }
+      #profile-icon { position: absolute; right: 15px; top: 8px; cursor: pointer; font-size: 22px; }
+      #profile-menu { display: none; position: absolute; right: 10px; top: 45px; background: white; border-radius: 6px; box-shadow: 0 3px 6px rgba(0,0,0,0.2); width: 200px; padding: 10px; z-index: 1000; }
+      #profile-menu p { margin: 5px 0; font-size: 0.9em; }
+      #logout-btn { display: block; background: #d9534f; color: white; border: none; padding: 8px; margin-top: 8px; width: 100%; border-radius: 6px; cursor: pointer; }
+      #logout-btn:hover { background: #c9302c; }
+
       #chat-screen { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; max-width: 600px; }
       #messages { list-style: none; padding: 10px; margin: 0; width: 100%; flex: 1; overflow-y: auto; background: #fff; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
-      #messages li { max-width: 80%; margin: 5px 0; padding: 8px 12px; border-radius: 15px; line-height: 1.4; word-wrap: break-word; font-size: 0.95em; position: relative; cursor: pointer; }
+      #messages li { max-width: 80%; margin: 5px 0; padding: 8px 12px; border-radius: 15px; line-height: 1.4; word-wrap: break-word; font-size: 0.95em; cursor: pointer; }
       .my-message { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 0; }
       .other-message { align-self: flex-start; background: #ffffff; border: 1px solid #ececec; border-bottom-left-radius: 0; }
       .reply-box { font-size: 0.8em; color: #444; border-left: 3px solid #888; margin-bottom: 5px; padding-left: 6px; opacity: 0.8; }
@@ -28,7 +34,14 @@
   </head>
   <body>
     <div id="alert-box"></div>
-    <h2>💬 Chat App</h2>
+    <h2>💬 Chat App
+      <span id="profile-icon">👤</span>
+      <div id="profile-menu">
+        <p><strong id="profile-name">Username</strong></p>
+        <p id="profile-email">Email</p>
+        <button id="logout-btn">Logout</button>
+      </div>
+    </h2>
 
     <div id="chat-screen">
       <ul id="messages"></ul>
@@ -53,23 +66,36 @@
       const alertBox = document.getElementById("alert-box");
       const alertBtn = document.getElementById("alert-btn");
 
+      // Profile menu elems
+      const profileIcon = document.getElementById("profile-icon");
+      const profileMenu = document.getElementById("profile-menu");
+      const logoutBtn = document.getElementById("logout-btn");
+      const profileName = document.getElementById("profile-name");
+      const profileEmail = document.getElementById("profile-email");
+
       let USERNAME = "Anonymous";
 
-      // ✅ Fetch the logged-in user's name from /me
+      // ✅ Fetch logged-in user info
       fetch("/me")
-        .then(res => {
-          if (res.ok) return res.json();
-          throw new Error("Not logged in");
-        })
+        .then(res => res.json())
         .then(data => {
           if (data.user) {
             USERNAME = data.user.username;
-            console.log("Logged in as:", USERNAME);
+            profileName.textContent = data.user.username;
+            profileEmail.textContent = data.user.email;
           }
-        })
-        .catch(() => {
-          console.warn("Defaulting to Anonymous");
         });
+
+      // Show/hide profile menu
+      profileIcon.addEventListener("click", () => {
+        profileMenu.style.display = profileMenu.style.display === "block" ? "none" : "block";
+      });
+
+      // Logout
+      logoutBtn.addEventListener("click", async () => {
+        await fetch("/logout", { method: "POST" });
+        window.location.href = "/login.html";
+      });
 
       let replyTo = null;
 
@@ -88,12 +114,6 @@
         li.appendChild(mainText);
 
         li.className = msg.user === USERNAME ? "my-message" : "other-message";
-
-        li.addEventListener("click", () => {
-          replyTo = { user: msg.user, text: msg.text };
-          replyPreview.style.display = "block";
-          replyPreview.innerHTML = "<span>Replying to " + replyTo.user + ":</span> " + replyTo.text;
-        });
 
         messages.appendChild(li);
         messages.scrollTop = messages.scrollHeight;
@@ -126,7 +146,6 @@
       socket.on("alert", (data) => {
         alertBox.textContent = data.text + " 🚨 (from " + data.sender + ")";
         alertBox.style.display = "block";
-        if (navigator.vibrate) navigator.vibrate([200,100,200]);
         setTimeout(() => { alertBox.style.display = "none"; }, 5000);
       });
 
