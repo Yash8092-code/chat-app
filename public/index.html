@@ -4,252 +4,24 @@
     <title>Chat App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-      body {
-        font-family: "Segoe UI", Tahoma, sans-serif;
-        background: #ece5dd;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        height: 100vh;
-      }
-      h2 {
-        margin: 0;
-        background: #075e54;
-        color: white;
-        padding: 12px;
-        width: 100%;
-        text-align: center;
-        font-size: 1.2em;
-        position: relative;
-      }
-      /* Profile icon/menu */
-      #profile-icon {
-        position: absolute;
-        right: 15px;
-        top: 8px;
-        cursor: pointer;
-        font-size: 22px;
-      }
-      #profile-menu {
-        display: none;
-        position: absolute;
-        right: 10px;
-        top: 45px;
-        background: white;
-        border-radius: 6px;
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-        width: 220px;
-        padding: 10px;
-        z-index: 1000;
-      }
-      #profile-menu img {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: block;
-        margin: 0 auto 10px auto;
-      }
-      #profile-menu p {
-        margin: 5px 0;
-        font-size: 0.9em;
-        text-align: center;
-      }
-      #avatar-url {
-        width: 100%;
-        padding: 6px;
-        margin-top: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-      }
-      #change-avatar {
-        margin-top: 6px;
-        width: 100%;
-        background: #128c7e;
-        color: white;
-        border: none;
-        padding: 8px;
-        border-radius: 6px;
-        cursor: pointer;
-      }
-      #change-avatar:hover {
-        background: #0d6d63;
-      }
-      #logout-btn {
-        display: block;
-        background: #d9534f;
-        color: white;
-        border: none;
-        padding: 8px;
-        margin-top: 8px;
-        width: 100%;
-        border-radius: 6px;
-        cursor: pointer;
-      }
-      #logout-btn:hover {
-        background: #c9302c;
-      }
-
-      #chat-screen {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 100%;
-        height: 100%;
-        max-width: 600px;
-      }
-      #messages {
-        list-style: none;
-        padding: 10px;
-        margin: 0;
-        width: 100%;
-        flex: 1;
-        overflow-y: auto;
-        border-radius: 10px;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-        display: flex;
-        flex-direction: column;
-
-        /* ✅ Background wallpaper */
-        background: url("https://t4.ftcdn.net/jpg/06/20/09/91/360_F_620099106_87XhpxWUWwNSENwYl3mgc754k1Gpppgb.jpg")
-          no-repeat center center;
-        background-size: cover;
-      }
-      #messages li {
-        max-width: 80%;
-        margin: 5px 0;
-        padding: 8px 12px;
-        border-radius: 15px;
-        line-height: 1.4;
-        word-wrap: break-word;
-        font-size: 0.95em;
-        display: flex;
-        align-items: flex-end;
-      }
-      .message-content {
-        max-width: 85%;
-      }
-      .avatar {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        margin-right: 6px;
-      }
-      .my-message {
-        align-self: flex-end;
-        background: #dcf8c6;
-        border-bottom-right-radius: 0;
-      }
-      .other-message {
-        align-self: flex-start;
-        background: #ffffff;
-        border: 1px solid #ececec;
-        border-bottom-left-radius: 0;
-      }
-      .reply-box {
-        font-size: 0.8em;
-        color: #444;
-        border-left: 3px solid #888;
-        margin-bottom: 5px;
-        padding-left: 6px;
-        opacity: 0.8;
-      }
-      #reply-preview {
-        display: none;
-        width: 100%;
-        max-width: 600px;
-        background: #f1f1f1;
-        border-left: 4px solid #075e54;
-        padding: 6px;
-        font-size: 0.9em;
-        margin-bottom: 5px;
-      }
-      #reply-preview span {
-        font-weight: bold;
-      }
-      form {
-        display: flex;
-        width: 100%;
-        max-width: 600px;
-        margin-top: 5px;
-        background: #f0f0f0;
-        padding: 5px;
-        border-radius: 25px;
-      }
-      input {
-        flex: 1;
-        padding: 10px;
-        border: none;
-        border-radius: 20px;
-        outline: none;
-        font-size: 1em;
-      }
-      button {
-        background: #075e54;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        margin-left: 5px;
-        border-radius: 50%;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      button:hover {
-        background: #128c7e;
-      }
-      #clear-btn {
-        margin: 8px 0;
-        background: #d9534f;
-        border-radius: 25px;
-        padding: 10px 16px;
-        cursor: pointer;
-        font-size: 0.9em;
-        border: none;
-        color: white;
-        width: 140px;
-        text-align: center;
-      }
-      #clear-btn:hover {
-        background: #c9302c;
-      }
-      #alert-box {
-        display: none;
-        position: fixed;
-        top: 20px;
-        width: 90%;
-        max-width: 500px;
-        margin: auto;
-        z-index: 1000;
-        background: #d9534f;
-        color: white;
-        font-weight: bold;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-        animation: pulse 1s infinite;
-      }
-      @keyframes pulse {
-        0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.05); opacity: 0.8; }
-        100% { transform: scale(1); opacity: 1; }
-      }
-      #alert-btn {
-        margin: 5px 0;
-        background: #ff0000;
-        border-radius: 25px;
-        padding: 10px 16px;
-        cursor: pointer;
-        font-size: 0.9em;
-        border: none;
-        color: white;
-        width: 160px;
-        text-align: center;
-      }
-      #alert-btn:hover {
-        background: #b30000;
-      }
+      body { font-family: "Segoe UI", Tahoma, sans-serif; background: #ece5dd; margin: 0; padding: 0; display:flex; flex-direction:column; align-items:center; height:100vh; }
+      h2 { margin: 0; background: #075e54; color:white; padding:12px; width:100%; text-align:center; font-size:1.2em; position:relative; }
+      #profile-icon { position:absolute; right:15px; top:8px; cursor:pointer; font-size:22px; }
+      #profile-menu { display:none; position:absolute; right:10px; top:45px; background:white; border-radius:6px; box-shadow:0 3px 6px rgba(0,0,0,0.2); width:220px; padding:10px; z-index:1000; }
+      #profile-menu img { width:60px; height:60px; border-radius:50%; display:block; margin:0 auto 10px; }
+      #profile-menu p { margin:5px 0; font-size:0.9em; text-align:center; }
+      #avatar-url { width:100%; padding:6px; margin-top:8px; border:1px solid #ccc; border-radius:4px; }
+      #change-avatar { margin-top:6px; width:100%; background:#128c7e; color:white; border:none; padding:8px; border-radius:6px; cursor:pointer; }
+      #logout-btn { background:#d9534f; color:white; border:none; padding:8px; width:100%; margin-top:8px; border-radius:6px; cursor:pointer; }
+      #chat-screen { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:600px; }
+      #messages { list-style:none; padding:10px; margin:0; width:100%; flex:1; overflow-y:auto; border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,0.2); display:flex; flex-direction:column;
+        background:url("https://t4.ftcdn.net/jpg/06/20/09/91/360_F_620099106_87XhpxWUWwNSENwYl3mgc754k1Gpppgb.jpg") no-repeat center center; background-size:cover; }
+      #messages li { max-width:80%; margin:5px 0; padding:8px 12px; border-radius:15px; font-size:0.95em; display:flex; align-items:flex-start; flex-direction:column; }
+      .avatar { width:25px; height:25px; border-radius:50%; margin-right:6px; }
+      .my-message { align-self:flex-end; background:#dcf8c6; border-bottom-right-radius:0; }
+      .other-message { align-self:flex-start; background:#ffffff; border:1px solid #ececec; border-bottom-left-radius:0; }
+      .reply-box{ font-size:0.8em; color:#444; border-left:3px solid #888; margin-bottom:5px; padding-left:6px; opacity:0.8; }
+      .timestamp { font-size:0.75em; color:#555; text-align:right; width:100%; margin-top:3px; }
     </style>
   </head>
   <body>
@@ -281,159 +53,96 @@
     <script>
       const socket = io("/", { transports: ["websocket", "polling"] });
 
-      const messages = document.getElementById("messages");
-      const replyPreview = document.getElementById("reply-preview");
-      const alertBox = document.getElementById("alert-box");
+      let USERNAME="Anonymous", AVATAR_URL="/default-avatar.png", replyTo=null;
 
-      const profileIcon = document.getElementById("profile-icon");
-      const profileMenu = document.getElementById("profile-menu");
-      const profilePic = document.getElementById("profile-pic");
-      const profileName = document.getElementById("profile-name");
-      const profileEmail = document.getElementById("profile-email");
-      const logoutBtn = document.getElementById("logout-btn");
-      const changeAvatarBtn = document.getElementById("change-avatar");
-
-      let USERNAME = "Anonymous";
-      let AVATAR_URL = "/default-avatar.png";
-      let replyTo = null;
-
-      // ✅ Fetch user info
-      fetch("/me")
-        .then(res => res.json())
-        .then(data => {
-          if (data.user) {
-            USERNAME = data.user.username;
-            AVATAR_URL = data.user.avatar_url || "/default-avatar.png";
-            profileName.textContent = USERNAME;
-            profileEmail.textContent = data.user.email;
-            profilePic.src = AVATAR_URL;
-          }
-        });
-
-      // Toggle profile dropdown
-      profileIcon.addEventListener("click", () => {
-        profileMenu.style.display = profileMenu.style.display === "block" ? "none" : "block";
-      });
-
-      // Logout
-      logoutBtn.addEventListener("click", async () => {
-        await fetch("/logout", { method: "POST" });
-        window.location.href = "/login.html";
-      });
-
-      // Change avatar
-      changeAvatarBtn.addEventListener("click", async () => {
-        const newUrl = document.getElementById("avatar-url").value;
-        if (newUrl.trim()) {
-          const res = await fetch("/update-avatar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ avatarUrl: newUrl })
-          });
-          const data = await res.json();
-          if (data.success) {
-            AVATAR_URL = newUrl;
-            profilePic.src = newUrl;
-            alert("Profile picture updated!");
-          } else {
-            alert("Error updating avatar");
-          }
+      // Profile links
+      fetch("/me").then(r=>r.json()).then(data=>{
+        if(data.user){ 
+          USERNAME=data.user.username; 
+          AVATAR_URL=data.user.avatar_url || "/default-avatar.png";
+          document.getElementById("profile-name").textContent = USERNAME;
+          document.getElementById("profile-email").textContent = data.user.email;
+          document.getElementById("profile-pic").src = AVATAR_URL;
         }
       });
 
-      // Add message
-      function addMessage(msg) {
-        const li = document.createElement("li");
-        li.className = msg.user === USERNAME ? "my-message" : "other-message";
+      document.getElementById("profile-icon").onclick=()=> {
+        const menu=document.getElementById("profile-menu");
+        menu.style.display = menu.style.display=="block" ? "none":"block";
+      };
 
-        const avatar = document.createElement("img");
-        avatar.src = msg.avatar_url || "/default-avatar.png";
-        avatar.className = "avatar";
+      document.getElementById("logout-btn").onclick=async()=>{
+        await fetch("/logout",{method:"POST"}); window.location="/login.html";
+      };
 
-        li.addEventListener("click", () => {
-          replyTo = { user: msg.user, text: msg.text };
-          replyPreview.style.display = "block";
-          replyPreview.innerHTML = "<span>Replying to " + replyTo.user + ":</span> " + replyTo.text;
-        });
-
-        const content = document.createElement("div");
-        content.className = "message-content";
-        if (msg.replyTo) {
-          const replyDiv = document.createElement("div");
-          replyDiv.className = "reply-box";
-          replyDiv.textContent = msg.replyTo.user + ": " + msg.replyTo.text;
-          content.appendChild(replyDiv);
+      document.getElementById("change-avatar").onclick=async()=>{
+        const url=document.getElementById("avatar-url").value.trim();
+        if(url){
+          const res=await fetch("/update-avatar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({avatarUrl:url})});
+          const d=await res.json();
+          if(d.success){ AVATAR_URL=url; document.getElementById("profile-pic").src=url; alert("Avatar updated!"); }
+          else{ alert("Error updating avatar"); }
         }
-        content.appendChild(document.createTextNode(msg.user + ": " + msg.text));
+      };
+
+      function addMessage(msg){
+        const li=document.createElement("li");
+        li.className = msg.user===USERNAME ? "my-message":"other-message";
+
+        const avatar=document.createElement("img");
+        avatar.src=msg.avatar_url || "/default-avatar.png";
+        avatar.className="avatar";
+
+        const content=document.createElement("div");
+        if(msg.replyTo){
+          const rd=document.createElement("div"); rd.className="reply-box";
+          rd.textContent=msg.replyTo.user+": "+msg.replyTo.text;
+          content.appendChild(rd);
+        }
+        const mainText=document.createElement("div");
+        mainText.textContent=msg.user+": "+msg.text;
+        content.appendChild(mainText);
+
+        // timestamp
+        if(msg.time){
+          const ts=document.createElement("div");
+          const dt=new Date(msg.time);
+          ts.className="timestamp";
+          ts.textContent=dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+          content.appendChild(ts);
+        }
 
         li.appendChild(avatar);
         li.appendChild(content);
-        messages.appendChild(li);
-        messages.scrollTop = messages.scrollHeight;
-      }
-      // ✅ Timestamp
-      if (msg.time) {
-        const time = new Date(msg.time);
-        const timeSpan = document.createElement("div");
-        timeSpan.style.fontSize = "0.75em";
-        timeSpan.style.color = "#555";
-        timeSpan.style.textAlign = "right";
-        timeSpan.textContent = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        content.appendChild(timeSpan);
+        document.getElementById("messages").appendChild(li);
+
+        li.onclick=()=> {
+          replyTo={user:msg.user,text:msg.text};
+          const rp=document.getElementById("reply-preview");
+          rp.style.display="block";
+          rp.innerHTML="<span>Replying to "+replyTo.user+":</span> "+replyTo.text;
+        };
       }
 
-      li.appendChild(avatar);
-      li.appendChild(content);
-      messages.appendChild(li);
-      messages.scrollTop = messages.scrollHeight;
+      socket.on("chat history", msgs=>msgs.forEach(addMessage));
+      socket.on("chat message", msg=>addMessage(msg));
+      socket.on("chat cleared", ()=>{ document.getElementById("messages").innerHTML=""; addMessage({user:"System",text:"Chat cleared",time:new Date()}); });
 
-      // ✅ Allow clicking on message to reply
-      li.addEventListener("click", () => {
-        replyTo = { user: msg.user, text: msg.text };
-        replyPreview.style.display = "block";
-        replyPreview.innerHTML = "<span>Replying to " + replyTo.user + ":</span> " + replyTo.text;
-      });
-
-      
-      // Socket listeners
-      socket.on("chat history", (msgs) => msgs.forEach(addMessage));
-      socket.on("chat message", (msg) => addMessage(msg));
-      socket.on("chat cleared", () => {
-        messages.innerHTML = "";
-        addMessage({ user: "System", text: "Chat was cleared 🗑️", avatar_url: "" });
-      });
-
-      // Form submit
-      document.getElementById("form").addEventListener("submit", (e) => {
+      document.getElementById("form").onsubmit=(e)=>{
         e.preventDefault();
-        const input = document.getElementById("input");
-        if (input.value.trim()) {
-          const text = input.value.trim();
-          socket.emit("chat message", { user: USERNAME, avatar_url: AVATAR_URL, text, replyTo });
-          input.value = "";
-          replyTo = null;
-          replyPreview.style.display = "none";
+        const input=document.getElementById("input");
+        if(input.value.trim()){
+          const text=input.value.trim();
+          socket.emit("chat message",{user:USERNAME,avatar_url:AVATAR_URL,text,replyTo});
+          input.value=""; replyTo=null; document.getElementById("reply-preview").style.display="none";
         }
-      });
+      };
 
-      // Clear chat
-      document.getElementById("clear-btn").addEventListener("click", () => {
-        if (confirm("Delete all chats?")) {
-          socket.emit("clear chat");
-        }
-      });
+      document.getElementById("clear-btn").onclick=()=>{ if(confirm("Delete all chats?")) socket.emit("clear chat"); };
 
-      // Alerts
-      socket.on("alert", (data) => {
-        alertBox.textContent = data.text + " 🚨 (from " + data.sender + ")";
-        alertBox.style.display = "block";
-        setTimeout(() => { alertBox.style.display = "none"; }, 5000);
-      });
+      socket.on("alert",data=>{ const ab=document.getElementById("alert-box"); ab.textContent=data.text+" 🚨 (from "+data.sender+")"; ab.style.display="block"; setTimeout(()=>ab.style.display="none",5000); });
+      document.getElementById("alert-btn").onclick=()=>{ const text=prompt("Enter alert message:")||"⚠️ ALERT!"; socket.emit("send alert",{user:USERNAME,text}); };
 
-      document.getElementById("alert-btn").addEventListener("click", () => {
-        const text = prompt("Enter alert message:") || "⚠️ ALERT!";
-        socket.emit("send alert", { user: USERNAME, text });
-      });
     </script>
   </body>
 </html>

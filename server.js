@@ -17,10 +17,11 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
-// ------------ PostgreSQL for Users + Sessions ------------
+// ------------ PostgreSQL (Users + Sessions) ------------
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // ✅ needed for Render Postgres
+  ssl: { rejectUnauthorized: false }, // required on Render
 });
 
 app.use(express.json());
@@ -33,14 +34,14 @@ app.use(
       tableName: "session",
       createTableIfMissing: true,
     }),
-    secret: "super-secret-key", // 🔑 change this before production
+    secret: "super-secret-key",
     resave: false,
     saveUninitialized: false,
     cookie: { maxAge: 1000 * 60 * 60 }, // 1 hour
+    name: "chat_sid"
   })
 );
 
-// Ensure Users Table
 async function initPgTables() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -56,11 +57,11 @@ async function initPgTables() {
 }
 initPgTables();
 
-// ------------ MongoDB for Messages ------------
-mongoose
-  .connect(process.env.MONGODB_URI)
+// ------------ MongoDB (Messages) ------------
+
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("✅ MongoDB connected (messages)"))
-  .catch((err) => console.error("❌ MongoDB error", err));
+  .catch(err => console.error("❌ MongoDB error", err));
 
 const messageSchema = new mongoose.Schema({
   user: String,
@@ -70,23 +71,22 @@ const messageSchema = new mongoose.Schema({
     user: String,
     text: String,
   },
-  time: { type: Date, default: Date.now },
+  time: { type: Date, default: Date.now }
 });
 const Message = mongoose.model("Message", messageSchema);
 
-// ------------ Auth Routes ------------
+// ------------ Auth Routes (Postgres) ------------
+
 app.post("/signup", async (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password)
     return res.status(400).json({ error: "All fields required" });
 
   try {
-    const userCheck = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
-    if (userCheck.rows.length)
-      return res.status(400).json({ error: "Email already exists" });
+    const check = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
+    if (check.rows.length) return res.status(400).json({ error: "Email already exists" });
 
     const hash = await bcrypt.hash(password, 10);
-
     await pool.query(
       "INSERT INTO users (username, email, password, avatar_url) VALUES ($1,$2,$3,$4)",
       [username, email, hash, "/default-avatar.png"]
@@ -106,8 +106,7 @@ app.post("/login", async (req, res) => {
 
   try {
     const result = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
-    if (!result.rows.length)
-      return res.status(401).json({ error: "Invalid credentials" });
+    if (!result.rows.length) return res.status(401).json({ error: "Invalid credentials" });
 
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
@@ -117,7 +116,7 @@ app.post("/login", async (req, res) => {
       id: user.id,
       username: user.username,
       email: user.email,
-      avatar_url: user.avatar_url,
+      avatar_url: user.avatar_url
     };
     res.json({ success: true, username: user.username });
   } catch (err) {
@@ -126,26 +125,24 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ✅ Logout Route
 app.post("/logout", (req, res) => {
   req.session.destroy(() => {
-    res.clearCookie("chat_sid"); // cookie name
+    res.clearCookie("chat_sid");
     res.json({ success: true });
   });
 });
 
-// ✅ Update Avatar
 app.post("/update-avatar", async (req, res) => {
   if (!req.session.user)
     return res.status(401).json({ error: "Not logged in" });
-
   const { avatarUrl } = req.body;
+
   try {
     await pool.query("UPDATE users SET avatar_url=$1 WHERE id=$2", [
       avatarUrl,
       req.session.user.id,
     ]);
-    req.session.user.avatar_url = avatarUrl; // update session
+    req.session.user.avatar_url = avatarUrl;
     res.json({ success: true });
   } catch (err) {
     console.error("❌ Avatar update error", err);
@@ -153,7 +150,6 @@ app.post("/update-avatar", async (req, res) => {
   }
 });
 
-// ✅ Current Session Info
 app.get("/me", (req, res) => {
   if (req.session.user) res.json({ user: req.session.user });
   else res.status(401).json({ error: "Not logged in" });
@@ -171,16 +167,15 @@ app.get("/chat", (req, res) => {
   res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
-// ------------ Socket.IO with MongoDB (Messages) ------------
+// ------------ Socket.IO with MongoDB ------------
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
-  // History: last 20 messages
+  // Send chat history
   Message.find().sort({ time: 1 }).limit(20).then((msgs) => {
     socket.emit("chat history", msgs);
   });
 
-  // Save + broadcast new message with avatar
   socket.on("chat message", async (msg) => {
     try {
       const newMsg = new Message({
@@ -188,7 +183,7 @@ io.on("connection", (socket) => {
         avatar_url: msg.avatar_url || "/default-avatar.png",
         text: msg.text,
         replyTo: msg.replyTo || null,
-        time: new Date()    // ✅ ensure timestamp
+        time: new Date()
       });
       await newMsg.save();
       io.emit("chat message", newMsg);
@@ -197,7 +192,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Clear chat
   socket.on("clear chat", async () => {
     try {
       await Message.deleteMany({});
@@ -207,11 +201,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Alerts
   socket.on("send alert", (data) => {
     io.emit("alert", {
       sender: data.user,
-      text: data.text || "⚠️ ALERT!",
+      text: data.text || "⚠️ ALERT!"
     });
   });
 
