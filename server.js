@@ -188,6 +188,7 @@ io.on("connection", (socket) => {
         avatar_url: msg.avatar_url || "/default-avatar.png",
         text: msg.text,
         replyTo: msg.replyTo || null,
+        time: new Date()    // ✅ ensure timestamp
       });
       await newMsg.save();
       io.emit("chat message", newMsg);

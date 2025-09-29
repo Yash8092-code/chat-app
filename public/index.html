@@ -350,6 +350,12 @@
         avatar.src = msg.avatar_url || "/default-avatar.png";
         avatar.className = "avatar";
 
+        li.addEventListener("click", () => {
+          replyTo = { user: msg.user, text: msg.text };
+          replyPreview.style.display = "block";
+          replyPreview.innerHTML = "<span>Replying to " + replyTo.user + ":</span> " + replyTo.text;
+        });
+
         const content = document.createElement("div");
         content.className = "message-content";
         if (msg.replyTo) {
@@ -365,7 +371,30 @@
         messages.appendChild(li);
         messages.scrollTop = messages.scrollHeight;
       }
+      // ✅ Timestamp
+      if (msg.time) {
+        const time = new Date(msg.time);
+        const timeSpan = document.createElement("div");
+        timeSpan.style.fontSize = "0.75em";
+        timeSpan.style.color = "#555";
+        timeSpan.style.textAlign = "right";
+        timeSpan.textContent = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        content.appendChild(timeSpan);
+      }
 
+      li.appendChild(avatar);
+      li.appendChild(content);
+      messages.appendChild(li);
+      messages.scrollTop = messages.scrollHeight;
+
+      // ✅ Allow clicking on message to reply
+      li.addEventListener("click", () => {
+        replyTo = { user: msg.user, text: msg.text };
+        replyPreview.style.display = "block";
+        replyPreview.innerHTML = "<span>Replying to " + replyTo.user + ":</span> " + replyTo.text;
+      });
+
+      
       // Socket listeners
       socket.on("chat history", (msgs) => msgs.forEach(addMessage));
       socket.on("chat message", (msg) => addMessage(msg));
