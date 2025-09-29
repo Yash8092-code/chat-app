@@ -10,19 +10,29 @@ const pgSession = require("connect-pg-simple")(session);
 const mongoose = require("mongoose");
 const path = require("path");
 const rateLimit = require("express-rate-limit");
+const multer = require("multer"); // For file uploads
+const cloudinary = require("cloudinary").v2; // For cloud storage
 require("dotenv").config();
+
+// --- Configure Cloudinary ---
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
-});
+const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+
+// --- Configure Multer for in-memory file handling ---
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // ------------ PostgreSQL (Users + Sessions) ------------
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // required on Render
+  ssl: { rejectUnauthorized: false },
 });
 
 app.use(express.json());
@@ -35,7 +45,7 @@ app.use(
       tableName: "session",
       createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || "a-default-fallback-secret", // Use environment variable
+    secret: process.env.SESSION_SECRET || "a-default-fallback-secret",
     resave: false,
     saveUninitialized: false,
     cookie: { maxAge: 1000 * 60 * 60 }, // 1 hour
@@ -59,7 +69,6 @@ async function initPgTables() {
 initPgTables();
 
 // ------------ MongoDB (Messages) ------------
-
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("✅ MongoDB connected (messages)"))
   .catch(err => console.error("❌ MongoDB error", err));
@@ -68,22 +77,17 @@ const messageSchema = new mongoose.Schema({
   user: String,
   avatar_url: { type: String, default: "/default-avatar.png" },
   text: String,
-  replyTo: {
-    user: String,
-    text: String,
-  },
+  audio_url: String, // For voice notes
+  replyTo: { user: String, text: String },
   time: { type: Date, default: Date.now }
 });
 const Message = mongoose.model("Message", messageSchema);
 
-// Object to store active users
 let activeUsers = {};
 
 // ------------ Auth Routes (Postgres) ------------
-
-// Add rate limiting to prevent brute-force attacks
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
@@ -151,10 +155,7 @@ app.post("/update-avatar", async (req, res) => {
   const { avatarUrl } = req.body;
 
   try {
-    await pool.query("UPDATE users SET avatar_url=$1 WHERE id=$2", [
-      avatarUrl,
-      req.session.user.id,
-    ]);
+    await pool.query("UPDATE users SET avatar_url=$1 WHERE id=$2", [avatarUrl, req.session.user.id]);
     req.session.user.avatar_url = avatarUrl;
     res.json({ success: true });
   } catch (err) {
@@ -166,6 +167,33 @@ app.post("/update-avatar", async (req, res) => {
 app.get("/me", (req, res) => {
   if (req.session.user) res.json({ user: req.session.user });
   else res.status(401).json({ error: "Not logged in" });
+});
+
+app.post("/upload-voice-note", upload.single('audio'), async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Not logged in" });
+    }
+    if (!req.file) {
+        return res.status(400).json({ error: "No audio file provided" });
+    }
+
+    cloudinary.uploader.upload_stream({ resource_type: "video" }, async (error, result) => {
+        if (error || !result) {
+            console.error("Cloudinary upload error:", error);
+            return res.status(500).json({ error: "Failed to upload audio" });
+        }
+
+        const newMsg = new Message({
+            user: req.session.user.username,
+            avatar_url: req.session.user.avatar_url,
+            audio_url: result.secure_url,
+            time: new Date()
+        });
+        await newMsg.save();
+
+        io.emit("chat message", newMsg);
+        res.json({ success: true, url: result.secure_url });
+    }).end(req.file.buffer);
 });
 
 // ------------ Routing ------------
@@ -217,7 +245,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 👇 ADDED: Listen for typing events and broadcast them
   socket.on('typing start', () => {
     if (activeUsers[socket.id]) {
       socket.broadcast.emit('user typing start', activeUsers[socket.id]);
@@ -250,7 +277,6 @@ io.on("connection", (socket) => {
     const disconnectedUser = activeUsers[socket.id];
     if (disconnectedUser) {
       console.log(`❌ ${disconnectedUser.username} disconnected`);
-      // 👇 ADDED: Make sure to broadcast that the user stopped typing on disconnect
       socket.broadcast.emit('user typing stop', disconnectedUser);
       delete activeUsers[socket.id];
       broadcastUserList();
