@@ -4,39 +4,25 @@
     <title>Chat App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-      body {
-        font-family: "Segoe UI", Tahoma, sans-serif;
-        background: #ece5dd;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        height: 100vh;
-        overflow: hidden; /* MODIFIED: Prevents the main page from scrolling */
-      }
-      h2 { margin:0; background:#075e54; color:white; padding:12px; width:100%; text-align:center; font-size:1.2em; position:relative; display:flex; justify-content:center; align-items:center; flex-shrink: 0; /* Prevents header from shrinking */ }
+      /* --- Base Styles (for all screen sizes) --- */
+      html { box-sizing: border-box; }
+      *, *:before, *:after { box-sizing: inherit; }
+
+      body { font-family: "Segoe UI", Tahoma, sans-serif; background:#ece5dd; margin:0; padding:0; display:flex; flex-direction:column; align-items:center; height:100vh; overflow: hidden; }
+      h2 { margin:0; background:#075e54; color:white; padding:12px; width:100%; text-align:center; font-size:1.2em; position:relative; display:flex; justify-content:center; align-items:center; flex-shrink: 0; }
       #header-icons { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 10px; }
       #profile-icon { cursor:pointer; font-size:22px; }
       #profile-menu { display:none; position:absolute; right:10px; top:45px; background:white; border-radius:6px; box-shadow:0 3px 6px rgba(0,0,0,0.2); width:220px; padding:10px; z-index:1000; }
       #profile-menu img { width:60px; height:60px; border-radius:50%; display:block; margin:0 auto 10px; }
       #profile-menu p { margin:5px 0; font-size:0.9em; text-align:center; }
       #profile-menu p strong, #profile-menu p { background-color: black; color: white; padding: 2px 5px; border-radius: 3px; display: inline-block; }
-      #avatar-url { width:100%; padding:6px; margin-top:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box; }
+      #avatar-url { width:100%; padding:6px; margin-top:8px; border:1px solid #ccc; border-radius:4px; }
       #change-avatar, #logout-btn { width:100%; border:none; padding:8px; border-radius:6px; cursor:pointer; margin-top:8px; }
       #change-avatar { background:#128c7e; color:white; }
       #logout-btn { background:#d9534f; color:white; }
-      #chat-screen {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 100%;
-        max-width: 600px;
-        flex: 1; /* MODIFIED: Allows this container to fill remaining space */
-        min-height: 0; /* MODIFIED: Important for proper flexbox shrinking */
-      }
-      #messages { list-style:none; padding:10px; margin:0; width:100%; flex:1; overflow-y:auto; border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,0.2); display:flex; flex-direction:column; background:url("https://t4.ftcdn.net/jpg/06/20/09/91/360_F_620099106_87XhpxWUWwNSENwYl3mgc754k1Gpppgb.jpg") no-repeat center center; background-size:cover; box-sizing: border-box; }
-      #messages li { max-width:80%; margin:5px 0; padding:8px 12px; border-radius:15px; font-size:0.95em; display:flex; flex-direction:column; }
+      #chat-screen { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 600px; flex: 1; min-height: 0; padding: 0 5px 5px 5px; }
+      #messages { list-style:none; padding:10px; margin:0; width:100%; flex:1; overflow-y:auto; border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,0.2); display:flex; flex-direction:column; background:url("https://t4.ftcdn.net/jpg/06/20/09/91/360_F_620099106_87XhpxWUWwNSENwYl3mgc754k1Gpppgb.jpg") no-repeat center center; background-size:cover; }
+      #messages li { max-width:85%; margin:5px 0; padding:8px 12px; border-radius:15px; font-size:0.95em; display:flex; flex-direction:column; word-wrap: break-word; }
       .avatar { width:25px; height:25px; border-radius:50%; margin-bottom:3px; }
       .my-message { align-self:flex-end; background:#dcf8c6; border-bottom-right-radius:0; }
       .other-message { align-self:flex-start; background:#ffffff; border:1px solid #ececec; border-bottom-left-radius:0; }
@@ -44,9 +30,9 @@
       .timestamp-container { display: flex; justify-content: flex-end; align-items: center; width: 100%; margin-top: 3px; }
       .timestamp { font-size: 0.75em; color: #555; }
       .tick-status { font-size: 1em; color: #4fc3f7; margin-left: 5px; line-height: 1; }
-      #reply-preview { display:none; width:100%; max-width:600px; background:#f1f1f1; border-left:4px solid #075e54; padding:6px; font-size:0.9em; margin-top:3px; box-sizing: border-box; flex-shrink: 0; }
-      form { display:flex; width:100%; max-width:600px; margin-top:5px; background:#f0f0f0; padding:5px; border-radius:25px; box-sizing: border-box; align-items: center; flex-shrink: 0; }
-      input[type="text"] { flex:1; padding:10px; border:none; border-radius:20px; outline:none; font-size:1em; background: white; }
+      #reply-preview { display:none; width:100%; background:#f1f1f1; border-left:4px solid #075e54; padding:6px; font-size:0.9em; margin-top:3px; flex-shrink: 0; }
+      form { display:flex; width:100%; margin-top:5px; background:#f0f0f0; padding:5px; border-radius:25px; align-items: center; flex-shrink: 0; }
+      input[type="text"] { flex:1; padding:10px; border:none; border-radius:20px; outline:none; font-size:1em; background: white; min-width: 50px; }
       form button[type="submit"] { background:#075e54; color:white; border:none; padding:10px 15px; margin-left:5px; border-radius:50%; cursor:pointer; transition:background 0.2s; }
       form button[type="submit"]:hover { background:#128c7e; }
       #clear-btn, #alert-btn { margin: 0; border: none; padding: 0; border-radius: 50%; cursor: pointer; color: white; width: 32px; height: 32px; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
@@ -55,12 +41,12 @@
       #clear-btn:hover { background: #c9302c; }
       #alert-btn:hover { background: #b30000; }
       #alert-box { display:none; position:fixed; top:20px; width:90%; max-width:500px; margin:auto; z-index:1000; background:#d9534f; color:white; font-weight:bold; padding:15px; border-radius:10px; text-align:center; box-shadow:0 3px 8px rgba(0,0,0,0.3); }
-      #online-users-container { width:100%; max-width:600px; background:white; padding:5px 10px; margin-bottom:5px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); box-sizing: border-box; flex-shrink: 0; }
+      #online-users-container { width:100%; background:white; padding:5px 10px; margin-bottom:5px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; }
       #online-users-container h3 { margin:5px 0; font-size:0.9em; color:#075e54; }
       #online-users-list { display:flex; flex-wrap:wrap; gap:10px; }
       .user-item { display:flex; align-items:center; font-size:0.85em; background:#f0f0f0; padding: 3px 8px; border-radius:15px; }
       .user-item img { width:20px; height:20px; border-radius:50%; margin-right:5px; }
-      #typing-indicator { width: 100%; padding: 0 10px; box-sizing: border-box; height: 35px; flex-shrink: 0; }
+      #typing-indicator { width: 100%; padding: 0 10px; height: 35px; flex-shrink: 0; }
       .typing-bubble { display: inline-flex; align-items: center; background: #e9e9e9; padding: 5px 10px; border-radius: 15px; border-bottom-left-radius: 0; animation: fadeIn 0.3s; }
       .typing-bubble img { width: 20px; height: 20px; border-radius: 50%; margin-right: 8px; }
       .typing-dots span { display: inline-block; width: 4px; height: 4px; background: #888; border-radius: 50%; margin: 0 1px; animation: typing-blink 1.4s infinite both; }
@@ -70,11 +56,47 @@
       #record-btn { background:#075e54; color:white; border:none; padding:10px; width:45px; height:45px; margin-left:5px; border-radius:50%; cursor:pointer; font-size: 1.2em; transition:background 0.2s; flex-shrink: 0; }
       #record-btn:hover { background:#128c7e; }
       #record-btn.is-recording { background: #d9534f; animation: pulse 1.5s infinite; }
-      .audio-player { width: 250px; height: 40px; }
+      .audio-player { max-width: 200px; height: 40px; }
       @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(217, 83, 79, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0); } }
       #attach-btn { background: transparent; border: none; font-size: 1.5em; cursor: pointer; color: #555; padding: 0 10px; }
       #image-input { display: none; }
       .chat-image { max-width: 250px; max-height: 200px; object-fit: contain; border-radius: 8px; margin-top: 5px; cursor: pointer; }
+
+      /* --- 📱 Mobile Responsive Styles --- */
+      @media (max-width: 480px) {
+        body {
+          font-size: 14px; /* Slightly reduce base font size */
+        }
+        h2 {
+          font-size: 1.1em; /* Make header text smaller */
+        }
+        #profile-menu {
+          width: 85vw; /* Make profile menu wider on small screens */
+          right: 7.5vw;
+          left: 7.5vw;
+        }
+        #messages li {
+          padding: 6px 10px; /* Reduce padding in chat bubbles */
+        }
+        form {
+          padding: 4px; /* Make form bar slightly smaller */
+        }
+        form button, #record-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 1em;
+            padding: 8px;
+        }
+        #attach-btn {
+          font-size: 1.2em;
+        }
+        .audio-player {
+          max-width: 180px; /* Shrink audio player */
+        }
+        .chat-image {
+          max-width: 200px; /* Shrink chat images */
+        }
+      }
     </style>
   </head>
   <body>
