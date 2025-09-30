@@ -4,15 +4,37 @@
     <title>Chat App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-      /* --- Base Styles (for all screen sizes) --- */
       html { box-sizing: border-box; }
       *, *:before, *:after { box-sizing: inherit; }
 
       body { font-family: "Segoe UI", Tahoma, sans-serif; background:#ece5dd; margin:0; padding:0; display:flex; flex-direction:column; align-items:center; height:100vh; overflow: hidden; }
-      h2 { margin:0; background:#075e54; color:white; padding:12px; width:100%; text-align:center; font-size:1.2em; position:relative; display:flex; justify-content:center; align-items:center; flex-shrink: 0; }
-      #header-icons { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 10px; }
+      
+      /* MODIFIED: Changed to space-between for robust mobile layout */
+      h2 { 
+        margin:0; 
+        background:#075e_54; 
+        color:white; 
+        padding: 0 15px; /* Added padding for edges */
+        width:100%; 
+        font-size:1.2em; 
+        position:relative; 
+        display:flex; 
+        justify-content: space-between; /* Pushes title and icons to opposite ends */
+        align-items:center; 
+        flex-shrink: 0;
+        height: 50px; /* Give header a fixed height */
+      }
+      
+      /* MODIFIED: Removed absolute positioning */
+      #header-icons {
+        position: relative; /* Changed from absolute */
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
       #profile-icon { cursor:pointer; font-size:22px; }
-      #profile-menu { display:none; position:absolute; right:10px; top:45px; background:white; border-radius:6px; box-shadow:0 3px 6px rgba(0,0,0,0.2); width:220px; padding:10px; z-index:1000; }
+      #profile-menu { display:none; position:absolute; right:0; /* Align to the new relative parent */ top:45px; background:white; border-radius:6px; box-shadow:0 3px 6px rgba(0,0,0,0.2); width:220px; padding:10px; z-index:1000; }
       #profile-menu img { width:60px; height:60px; border-radius:50%; display:block; margin:0 auto 10px; }
       #profile-menu p { margin:5px 0; font-size:0.9em; text-align:center; }
       #profile-menu p strong, #profile-menu p { background-color: black; color: white; padding: 2px 5px; border-radius: 3px; display: inline-block; }
@@ -64,57 +86,39 @@
 
       /* --- 📱 Mobile Responsive Styles --- */
       @media (max-width: 480px) {
-        body {
-          font-size: 14px; /* Slightly reduce base font size */
+        body { font-size: 14px; }
+        h2 { font-size: 1.1em; }
+        #header-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        h2 {
-          font-size: 1.1em; /* Make header text smaller */
-        }
-        #profile-menu {
-          width: 85vw; /* Make profile menu wider on small screens */
-          right: 7.5vw;
-          left: 7.5vw;
-        }
-        #messages li {
-          padding: 6px 10px; /* Reduce padding in chat bubbles */
-        }
-        form {
-          padding: 4px; /* Make form bar slightly smaller */
-        }
-        form button, #record-btn {
-            width: 40px;
-            height: 40px;
-            font-size: 1em;
-            padding: 8px;
-        }
-        #attach-btn {
-          font-size: 1.2em;
-        }
-        .audio-player {
-          max-width: 180px; /* Shrink audio player */
-        }
-        .chat-image {
-          max-width: 200px; /* Shrink chat images */
-        }
+        #profile-menu { width: 85vw; right: 2.5vw; }
+        #messages li { padding: 6px 10px; }
+        form { padding: 4px; }
+        form button, #record-btn { width: 40px; height: 40px; font-size: 1em; padding: 8px; }
+        #attach-btn { font-size: 1.2em; }
+        .audio-player { max-width: 180px; }
+        .chat-image { max-width: 200px; }
       }
     </style>
   </head>
   <body>
     <div id="alert-box"></div>
     <h2>
-      💬 Chat App
+      <span id="header-title">💬 Chat App</span>
       <div id="header-icons">
         <button id="clear-btn" title="Clear Chat">🗑️</button>
         <button id="alert-btn" title="Send Alert">🚨</button>
         <span id="profile-icon">👤</span>
-      </div>
-      <div id="profile-menu">
-        <img id="profile-pic" src="/default-avatar.png" alt="avatar">
-        <input type="text" id="avatar-url" placeholder="Paste avatar image URL">
-        <button id="change-avatar">Change Avatar</button>
-        <p><strong id="profile-name">Username</strong></p>
-        <p id="profile-email">Email</p>
-        <button id="logout-btn">Logout</button>
+        <div id="profile-menu">
+          <img id="profile-pic" src="/default-avatar.png" alt="avatar">
+          <input type="text" id="avatar-url" placeholder="Paste avatar image URL">
+          <button id="change-avatar">Change Avatar</button>
+          <p><strong id="profile-name">Username</strong></p>
+          <p id="profile-email">Email</p>
+          <button id="logout-btn">Logout</button>
+        </div>
       </div>
     </h2>
 
