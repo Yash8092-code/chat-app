@@ -48,7 +48,7 @@ app.use(
     secret: process.env.SESSION_SECRET || "a-default-fallback-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 }, // 1 hour
+    cookie: { maxAge: 1000 * 60 * 60 * 24 }, // 24 hours
     name: "chat_sid"
   })
 );
@@ -78,6 +78,7 @@ const messageSchema = new mongoose.Schema({
   avatar_url: { type: String, default: "/default-avatar.png" },
   text: String,
   audio_url: String, // For voice notes
+  image_url: String, // For images
   replyTo: { user: String, text: String },
   time: { type: Date, default: Date.now }
 });
@@ -187,6 +188,33 @@ app.post("/upload-voice-note", upload.single('audio'), async (req, res) => {
             user: req.session.user.username,
             avatar_url: req.session.user.avatar_url,
             audio_url: result.secure_url,
+            time: new Date()
+        });
+        await newMsg.save();
+
+        io.emit("chat message", newMsg);
+        res.json({ success: true, url: result.secure_url });
+    }).end(req.file.buffer);
+});
+
+app.post("/upload-image", upload.single('image'), async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Not logged in" });
+    }
+    if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+    }
+
+    cloudinary.uploader.upload_stream({ resource_type: "image" }, async (error, result) => {
+        if (error || !result) {
+            console.error("Cloudinary image upload error:", error);
+            return res.status(500).json({ error: "Failed to upload image" });
+        }
+
+        const newMsg = new Message({
+            user: req.session.user.username,
+            avatar_url: req.session.user.avatar_url,
+            image_url: result.secure_url,
             time: new Date()
         });
         await newMsg.save();
