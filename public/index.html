@@ -5,18 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       body { font-family: "Segoe UI", Tahoma, sans-serif; background:#ece5dd; margin:0; padding:0; display:flex; flex-direction:column; align-items:center; height:100vh; }
-      h2 { margin:0; background:#075e54; color:white; padding:12px; width:100%; text-align:center; font-size:1.2em; position:relative; }
-      #profile-icon { position:absolute; right:15px; top:8px; cursor:pointer; font-size:22px; }
+      h2 { margin:0; background:#075e54; color:white; padding:12px; width:100%; text-align:center; font-size:1.2em; position:relative; display:flex; justify-content:center; align-items:center; }
+      
+      /* MODIFIED: Container for header icons */
+      #header-icons {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      /* MODIFIED: Profile icon no longer needs individual positioning */
+      #profile-icon { cursor:pointer; font-size:22px; }
+      
       #profile-menu { display:none; position:absolute; right:10px; top:45px; background:white; border-radius:6px; box-shadow:0 3px 6px rgba(0,0,0,0.2); width:220px; padding:10px; z-index:1000; }
       #profile-menu img { width:60px; height:60px; border-radius:50%; display:block; margin:0 auto 10px; }
       #profile-menu p { margin:5px 0; font-size:0.9em; text-align:center; }
-      #profile-menu p strong, #profile-menu p { /* Modified: Set text color to white for better contrast */
-        background-color: black; /* Added: Black background */
-        color: white; /* Added: White text color */
-        padding: 2px 5px;
-        border-radius: 3px;
-        display: inline-block; /* To apply background only to the text */
-      }
+      #profile-menu p strong, #profile-menu p { background-color: black; color: white; padding: 2px 5px; border-radius: 3px; display: inline-block; }
       #avatar-url { width:100%; padding:6px; margin-top:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box; }
       #change-avatar, #logout-btn { width:100%; border:none; padding:8px; border-radius:6px; cursor:pointer; margin-top:8px; }
       #change-avatar { background:#128c7e; color:white; }
@@ -36,8 +44,28 @@
       input[type="text"] { flex:1; padding:10px; border:none; border-radius:20px; outline:none; font-size:1em; background: white; }
       form button[type="submit"] { background:#075e54; color:white; border:none; padding:10px 15px; margin-left:5px; border-radius:50%; cursor:pointer; transition:background 0.2s; }
       form button[type="submit"]:hover { background:#128c7e; }
-      #clear-btn, #alert-btn { margin:8px 0; border:none; padding:10px 16px; border-radius:25px; cursor:pointer; font-size:0.9em; color:white; width:140px; }
-      #clear-btn { background:#d9534f; } #alert-btn { background:#ff0000; }
+      
+      /* MODIFIED: Styles for small header buttons */
+      #clear-btn, #alert-btn {
+        margin: 0;
+        border: none;
+        padding: 0;
+        border-radius: 50%;
+        cursor: pointer;
+        color: white;
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s;
+      }
+      #clear-btn { background: #d9534f; }
+      #alert-btn { background: #ff0000; }
+      #clear-btn:hover { background: #c9302c; }
+      #alert-btn:hover { background: #b30000; }
+
       #alert-box { display:none; position:fixed; top:20px; width:90%; max-width:500px; margin:auto; z-index:1000; background:#d9534f; color:white; font-weight:bold; padding:15px; border-radius:10px; text-align:center; box-shadow:0 3px 8px rgba(0,0,0,0.3); }
       #online-users-container { width:100%; max-width:600px; background:white; padding:5px 10px; margin-bottom:5px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); box-sizing: border-box; }
       #online-users-container h3 { margin:5px 0; font-size:0.9em; color:#075e54; }
@@ -58,18 +86,18 @@
       @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(217, 83, 79, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0); } }
       #attach-btn { background: transparent; border: none; font-size: 1.5em; cursor: pointer; color: #555; padding: 0 10px; }
       #image-input { display: none; }
-      .chat-image {
-        max-width: 250px; /* MODIFIED: Smaller max-width for images */
-        max-height: 200px; /* MODIFIED: Smaller max-height for images */
-        object-fit: contain; /* Ensures the image fits within dimensions without cropping */
-        border-radius: 8px; margin-top: 5px; cursor: pointer;
-      }
+      .chat-image { max-width: 250px; max-height: 200px; object-fit: contain; border-radius: 8px; margin-top: 5px; cursor: pointer; }
     </style>
   </head>
   <body>
     <div id="alert-box"></div>
-    <h2>💬 Chat App
-      <span id="profile-icon">👤</span>
+    <h2>
+      💬 Chat App
+      <div id="header-icons">
+        <button id="clear-btn" title="Clear Chat">🗑️</button>
+        <button id="alert-btn" title="Send Alert">🚨</button>
+        <span id="profile-icon">👤</span>
+      </div>
       <div id="profile-menu">
         <img id="profile-pic" src="/default-avatar.png" alt="avatar">
         <input type="text" id="avatar-url" placeholder="Paste avatar image URL">
@@ -96,9 +124,7 @@
         <button type="submit">➤</button>
         <button type="button" id="record-btn">🎙️</button>
       </form>
-      <button id="clear-btn">🗑️ Clear Chat</button>
-      <button id="alert-btn">🚨 Send Alert</button>
-    </div>
+      </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -133,7 +159,7 @@
       });
 
       function addMessage(msg) {
-        if (!msg._id) return; // Don't render malformed messages
+        if (!msg._id) return;
         const li = document.createElement("li");
         li.className = msg.user === USERNAME ? "my-message" : "other-message";
         li.dataset.messageId = msg._id;
@@ -313,6 +339,8 @@
         replyTo = null;
         document.getElementById("reply-preview").style.display = "none";
       };
+      
+      // The onclick events for these buttons still work perfectly, no changes needed to the JS
       document.getElementById("clear-btn").onclick = () => { if (confirm("Delete all chats?")) socket.emit("clear chat"); };
       document.getElementById("alert-btn").onclick = () => { const t = prompt("Enter alert message:") || "⚠️ ALERT!"; socket.emit("send alert", { user: USERNAME, text: t }); };
     </script>
