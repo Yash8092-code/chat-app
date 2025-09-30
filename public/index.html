@@ -10,6 +10,13 @@
       #profile-menu { display:none; position:absolute; right:10px; top:45px; background:white; border-radius:6px; box-shadow:0 3px 6px rgba(0,0,0,0.2); width:220px; padding:10px; z-index:1000; }
       #profile-menu img { width:60px; height:60px; border-radius:50%; display:block; margin:0 auto 10px; }
       #profile-menu p { margin:5px 0; font-size:0.9em; text-align:center; }
+      #profile-menu p strong, #profile-menu p { /* Modified: Set text color to white for better contrast */
+        background-color: black; /* Added: Black background */
+        color: white; /* Added: White text color */
+        padding: 2px 5px;
+        border-radius: 3px;
+        display: inline-block; /* To apply background only to the text */
+      }
       #avatar-url { width:100%; padding:6px; margin-top:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box; }
       #change-avatar, #logout-btn { width:100%; border:none; padding:8px; border-radius:6px; cursor:pointer; margin-top:8px; }
       #change-avatar { background:#128c7e; color:white; }
@@ -51,7 +58,12 @@
       @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(217, 83, 79, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0); } }
       #attach-btn { background: transparent; border: none; font-size: 1.5em; cursor: pointer; color: #555; padding: 0 10px; }
       #image-input { display: none; }
-      .chat-image { max-width: 100%; border-radius: 8px; margin-top: 5px; cursor: pointer; }
+      .chat-image {
+        max-width: 250px; /* MODIFIED: Smaller max-width for images */
+        max-height: 200px; /* MODIFIED: Smaller max-height for images */
+        object-fit: contain; /* Ensures the image fits within dimensions without cropping */
+        border-radius: 8px; margin-top: 5px; cursor: pointer;
+      }
     </style>
   </head>
   <body>
