@@ -7,34 +7,36 @@
       html { box-sizing: border-box; }
       *, *:before, *:after { box-sizing: inherit; }
 
-      body { font-family: "Segoe UI", Tahoma, sans-serif; background:#ece5dd; margin:0; padding:0; display:flex; flex-direction:column; align-items:center; height:100vh; overflow: hidden; }
-      
-      /* MODIFIED: Changed to space-between for robust mobile layout */
-      h2 { 
-        margin:0; 
-        background:#075e_54; 
-        color:white; 
-        padding: 0 15px; /* Added padding for edges */
-        width:100%; 
-        font-size:1.2em; 
-        position:relative; 
-        display:flex; 
-        justify-content: space-between; /* Pushes title and icons to opposite ends */
-        align-items:center; 
-        flex-shrink: 0;
-        height: 50px; /* Give header a fixed height */
-      }
-      
-      /* MODIFIED: Removed absolute positioning */
-      #header-icons {
-        position: relative; /* Changed from absolute */
+      /* MODIFIED: Body is now a simple centered backdrop */
+      body {
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: #111;
+        margin: 0;
+        padding: 10px;
         display: flex;
+        justify-content: center;
         align-items: center;
-        gap: 10px;
+        height: 100vh;
       }
 
+      /* ADDED: The main container for the entire application */
+      #app-container {
+        width: 100%;
+        height: 100%;
+        max-width: 450px; /* Max width on desktop */
+        max-height: 900px; /* Max height on tall screens */
+        background: #ece5dd;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* CRITICAL: Prevents any overflow and makes the container fixed */
+      }
+
+      h2 { margin:0; background:#075e54; color:white; padding: 0 15px; width:100%; font-size:1.2em; position:relative; display:flex; justify-content: space-between; align-items:center; flex-shrink: 0; height: 50px; }
+      #header-icons { position: relative; display: flex; align-items: center; gap: 10px; }
       #profile-icon { cursor:pointer; font-size:22px; }
-      #profile-menu { display:none; position:absolute; right:0; /* Align to the new relative parent */ top:45px; background:white; border-radius:6px; box-shadow:0 3px 6px rgba(0,0,0,0.2); width:220px; padding:10px; z-index:1000; }
+      #profile-menu { display:none; position:absolute; right:0; top:45px; background:white; border-radius:6px; box-shadow:0 3px 6px rgba(0,0,0,0.2); width:220px; padding:10px; z-index:1000; }
       #profile-menu img { width:60px; height:60px; border-radius:50%; display:block; margin:0 auto 10px; }
       #profile-menu p { margin:5px 0; font-size:0.9em; text-align:center; }
       #profile-menu p strong, #profile-menu p { background-color: black; color: white; padding: 2px 5px; border-radius: 3px; display: inline-block; }
@@ -42,8 +44,8 @@
       #change-avatar, #logout-btn { width:100%; border:none; padding:8px; border-radius:6px; cursor:pointer; margin-top:8px; }
       #change-avatar { background:#128c7e; color:white; }
       #logout-btn { background:#d9534f; color:white; }
-      #chat-screen { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 600px; flex: 1; min-height: 0; padding: 0 5px 5px 5px; }
-      #messages { list-style:none; padding:10px; margin:0; width:100%; flex:1; overflow-y:auto; border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,0.2); display:flex; flex-direction:column; background:url("https://t4.ftcdn.net/jpg/06/20/09/91/360_F_620099106_87XhpxWUWwNSENwYl3mgc754k1Gpppgb.jpg") no-repeat center center; background-size:cover; }
+      #chat-screen { display: flex; flex-direction: column; align-items: center; width: 100%; flex: 1; min-height: 0; padding: 5px; }
+      #messages { list-style:none; padding:10px; margin:0; width:100%; flex:1; overflow-y:auto; border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,0.1); display:flex; flex-direction:column; background:url("https://t4.ftcdn.net/jpg/06/20/09/91/360_F_620099106_87XhpxWUWwNSENwYl3mgc754k1Gpppgb.jpg") no-repeat center center; background-size:cover; }
       #messages li { max-width:85%; margin:5px 0; padding:8px 12px; border-radius:15px; font-size:0.95em; display:flex; flex-direction:column; word-wrap: break-word; }
       .avatar { width:25px; height:25px; border-radius:50%; margin-bottom:3px; }
       .my-message { align-self:flex-end; background:#dcf8c6; border-bottom-right-radius:0; }
@@ -62,7 +64,7 @@
       #alert-btn { background: #ff0000; }
       #clear-btn:hover { background: #c9302c; }
       #alert-btn:hover { background: #b30000; }
-      #alert-box { display:none; position:fixed; top:20px; width:90%; max-width:500px; margin:auto; z-index:1000; background:#d9534f; color:white; font-weight:bold; padding:15px; border-radius:10px; text-align:center; box-shadow:0 3px 8px rgba(0,0,0,0.3); }
+      #alert-box { display:none; position:fixed; top:20px; width:90%; max-width:500px; margin:auto; z-index:2000; background:#d9534f; color:white; font-weight:bold; padding:15px; border-radius:10px; text-align:center; box-shadow:0 3px 8px rgba(0,0,0,0.3); }
       #online-users-container { width:100%; background:white; padding:5px 10px; margin-bottom:5px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; }
       #online-users-container h3 { margin:5px 0; font-size:0.9em; color:#075e54; }
       #online-users-list { display:flex; flex-wrap:wrap; gap:10px; }
@@ -86,13 +88,14 @@
 
       /* --- 📱 Mobile Responsive Styles --- */
       @media (max-width: 480px) {
-        body { font-size: 14px; }
-        h2 { font-size: 1.1em; }
-        #header-title {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        body { padding: 0; } /* Remove padding on small screens for full-screen feel */
+        #app-container {
+            border-radius: 0; /* Remove border radius on mobile */
+            height: 100%;
+            max-height: none;
         }
+        h2 { font-size: 1.1em; }
+        #header-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #profile-menu { width: 85vw; right: 2.5vw; }
         #messages li { padding: 6px 10px; }
         form { padding: 4px; }
@@ -105,39 +108,41 @@
   </head>
   <body>
     <div id="alert-box"></div>
-    <h2>
-      <span id="header-title">💬 Chat App</span>
-      <div id="header-icons">
-        <button id="clear-btn" title="Clear Chat">🗑️</button>
-        <button id="alert-btn" title="Send Alert">🚨</button>
-        <span id="profile-icon">👤</span>
-        <div id="profile-menu">
-          <img id="profile-pic" src="/default-avatar.png" alt="avatar">
-          <input type="text" id="avatar-url" placeholder="Paste avatar image URL">
-          <button id="change-avatar">Change Avatar</button>
-          <p><strong id="profile-name">Username</strong></p>
-          <p id="profile-email">Email</p>
-          <button id="logout-btn">Logout</button>
+    <div id="app-container">
+      <h2>
+        <span id="header-title">💬 Chat App</span>
+        <div id="header-icons">
+          <button id="clear-btn" title="Clear Chat">🗑️</button>
+          <button id="alert-btn" title="Send Alert">🚨</button>
+          <span id="profile-icon">👤</span>
+          <div id="profile-menu">
+            <img id="profile-pic" src="/default-avatar.png" alt="avatar">
+            <input type="text" id="avatar-url" placeholder="Paste avatar image URL">
+            <button id="change-avatar">Change Avatar</button>
+            <p><strong id="profile-name">Username</strong></p>
+            <p id="profile-email">Email</p>
+            <button id="logout-btn">Logout</button>
+          </div>
         </div>
+      </h2>
+
+      <div id="online-users-container">
+        <h3>🟢 Online - <span id="user-count">0</span></h3>
+        <div id="online-users-list"></div>
       </div>
-    </h2>
 
-    <div id="online-users-container">
-      <h3>🟢 Online - <span id="user-count">0</span></h3>
-      <div id="online-users-list"></div>
-    </div>
-
-    <div id="chat-screen">
-      <ul id="messages"></ul>
-      <div id="typing-indicator"></div>
-      <div id="reply-preview"></div>
-      <form id="form">
-        <input type="file" id="image-input" accept="image/*" />
-        <label for="image-input" id="attach-btn" role="button">📎</label>
-        <input type="text" id="input" autocomplete="off" placeholder="Type a message..." />
-        <button type="submit">➤</button>
-        <button type="button" id="record-btn">🎙️</button>
-      </form>
+      <div id="chat-screen">
+        <ul id="messages"></ul>
+        <div id="typing-indicator"></div>
+        <div id="reply-preview"></div>
+        <form id="form">
+          <input type="file" id="image-input" accept="image/*" />
+          <label for="image-input" id="attach-btn" role="button">📎</label>
+          <input type="text" id="input" autocomplete="off" placeholder="Type a message..." />
+          <button type="submit">➤</button>
+          <button type="button" id="record-btn">🎙️</button>
+        </form>
+      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
