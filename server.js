@@ -10,8 +10,8 @@ const pgSession = require("connect-pg-simple")(session);
 const mongoose = require("mongoose");
 const path = require("path");
 const rateLimit = require("express-rate-limit");
-const multer = require("multer"); // For file uploads
-const cloudinary = require("cloudinary").v2; // For cloud storage
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
 
 // --- Configure Cloudinary ---
@@ -25,7 +25,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
-// --- Configure Multer for in-memory file handling ---
+// --- Configure Multer ---
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -77,8 +77,9 @@ const messageSchema = new mongoose.Schema({
   user: String,
   avatar_url: { type: String, default: "/default-avatar.png" },
   text: String,
-  audio_url: String, // For voice notes
-  image_url: String, // For images
+  audio_url: String,
+  image_url: String,
+  seen: { type: Boolean, default: false },
   replyTo: { user: String, text: String },
   time: { type: Date, default: Date.now }
 });
@@ -86,7 +87,7 @@ const Message = mongoose.model("Message", messageSchema);
 
 let activeUsers = {};
 
-// ------------ Auth Routes (Postgres) ------------
+// ------------ Auth & File Upload Routes ------------
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
@@ -97,19 +98,12 @@ const authLimiter = rateLimit({
 
 app.post("/signup", authLimiter, async (req, res) => {
   const { username, email, password } = req.body;
-  if (!username || !email || !password)
-    return res.status(400).json({ error: "All fields required" });
-
+  if (!username || !email || !password) return res.status(400).json({ error: "All fields required" });
   try {
     const check = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
     if (check.rows.length) return res.status(400).json({ error: "Email already exists" });
-
     const hash = await bcrypt.hash(password, 10);
-    await pool.query(
-      "INSERT INTO users (username, email, password, avatar_url) VALUES ($1,$2,$3,$4)",
-      [username, email, hash, "/default-avatar.png"]
-    );
-
+    await pool.query("INSERT INTO users (username, email, password) VALUES ($1,$2,$3)", [username, email, hash]);
     res.json({ success: true });
   } catch (err) {
     console.error("❌ Signup error", err);
@@ -119,24 +113,15 @@ app.post("/signup", authLimiter, async (req, res) => {
 
 app.post("/login", authLimiter, async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password)
-    return res.status(400).json({ error: "All fields required" });
-
+  if (!email || !password) return res.status(400).json({ error: "All fields required" });
   try {
     const result = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
     if (!result.rows.length) return res.status(401).json({ error: "Invalid credentials" });
-
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: "Invalid credentials" });
-
-    req.session.user = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      avatar_url: user.avatar_url
-    };
-    res.json({ success: true, username: user.username });
+    req.session.user = { id: user.id, username: user.username, email: user.email, avatar_url: user.avatar_url };
+    res.json({ success: true });
   } catch (err) {
     console.error("❌ Login error", err);
     res.status(500).json({ error: "Login failed" });
@@ -151,10 +136,8 @@ app.post("/logout", (req, res) => {
 });
 
 app.post("/update-avatar", async (req, res) => {
-  if (!req.session.user)
-    return res.status(401).json({ error: "Not logged in" });
+  if (!req.session.user) return res.status(401).json({ error: "Not logged in" });
   const { avatarUrl } = req.body;
-
   try {
     await pool.query("UPDATE users SET avatar_url=$1 WHERE id=$2", [avatarUrl, req.session.user.id]);
     req.session.user.avatar_url = avatarUrl;
@@ -171,101 +154,58 @@ app.get("/me", (req, res) => {
 });
 
 app.post("/upload-voice-note", upload.single('audio'), async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Not logged in" });
-    }
-    if (!req.file) {
-        return res.status(400).json({ error: "No audio file provided" });
-    }
-
+    if (!req.session.user) return res.status(401).json({ error: "Not logged in" });
+    if (!req.file) return res.status(400).json({ error: "No audio file provided" });
     cloudinary.uploader.upload_stream({ resource_type: "video" }, async (error, result) => {
         if (error || !result) {
             console.error("Cloudinary upload error:", error);
             return res.status(500).json({ error: "Failed to upload audio" });
         }
-
-        const newMsg = new Message({
-            user: req.session.user.username,
-            avatar_url: req.session.user.avatar_url,
-            audio_url: result.secure_url,
-            time: new Date()
-        });
+        const newMsg = new Message({ user: req.session.user.username, avatar_url: req.session.user.avatar_url, audio_url: result.secure_url });
         await newMsg.save();
-
         io.emit("chat message", newMsg);
-        res.json({ success: true, url: result.secure_url });
+        res.json({ success: true });
     }).end(req.file.buffer);
 });
 
 app.post("/upload-image", upload.single('image'), async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Not logged in" });
-    }
-    if (!req.file) {
-        return res.status(400).json({ error: "No image file provided" });
-    }
-
+    if (!req.session.user) return res.status(401).json({ error: "Not logged in" });
+    if (!req.file) return res.status(400).json({ error: "No image file provided" });
     cloudinary.uploader.upload_stream({ resource_type: "image" }, async (error, result) => {
         if (error || !result) {
             console.error("Cloudinary image upload error:", error);
             return res.status(500).json({ error: "Failed to upload image" });
         }
-
-        const newMsg = new Message({
-            user: req.session.user.username,
-            avatar_url: req.session.user.avatar_url,
-            image_url: result.secure_url,
-            time: new Date()
-        });
+        const newMsg = new Message({ user: req.session.user.username, avatar_url: req.session.user.avatar_url, image_url: result.secure_url });
         await newMsg.save();
-
         io.emit("chat message", newMsg);
-        res.json({ success: true, url: result.secure_url });
+        res.json({ success: true });
     }).end(req.file.buffer);
 });
 
 // ------------ Routing ------------
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
-
-app.get("/", (req, res) => {
-  res.redirect("/login.html");
-});
-
+app.get("/", (req, res) => res.redirect("/login.html"));
 app.get("/chat", (req, res) => {
   if (!req.session.user) return res.redirect("/login.html");
   res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
-// ------------ Socket.IO with MongoDB ------------
+// ------------ Socket.IO ------------
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
-
-  const broadcastUserList = () => {
-    io.emit("update user list", Object.values(activeUsers));
-  };
-
-  Message.find().sort({ time: 1 }).limit(50).then((msgs) => {
-    socket.emit("chat history", msgs);
-  });
+  const broadcastUserList = () => io.emit("update user list", Object.values(activeUsers));
+  Message.find().sort({ time: 1 }).limit(100).then((msgs) => socket.emit("chat history", msgs));
 
   socket.on("user connected", (userData) => {
-    activeUsers[socket.id] = {
-        username: userData.username,
-        avatar_url: userData.avatar_url
-    };
-    console.log(`${userData.username} has joined the chat.`);
+    activeUsers[socket.id] = { username: userData.username, avatar_url: userData.avatar_url };
+    console.log(`${userData.username} has joined.`);
     broadcastUserList();
   });
 
   socket.on("chat message", async (msg) => {
     try {
-      const newMsg = new Message({
-        user: msg.user,
-        avatar_url: msg.avatar_url || "/default-avatar.png",
-        text: msg.text,
-        replyTo: msg.replyTo || null,
-        time: new Date()
-      });
+      const newMsg = new Message({ user: msg.user, avatar_url: msg.avatar_url, text: msg.text, replyTo: msg.replyTo });
       await newMsg.save();
       io.emit("chat message", newMsg);
     } catch (err) {
@@ -273,49 +213,34 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on('typing start', () => {
-    if (activeUsers[socket.id]) {
-      socket.broadcast.emit('user typing start', activeUsers[socket.id]);
-    }
-  });
-
-  socket.on('typing stop', () => {
-    if (activeUsers[socket.id]) {
-      socket.broadcast.emit('user typing stop', activeUsers[socket.id]);
-    }
-  });
-
-  socket.on("clear chat", async () => {
+  socket.on('message seen', async ({ messageId }) => {
     try {
-      await Message.deleteMany({});
-      io.emit("chat cleared");
+        const msg = await Message.findById(messageId);
+        if (msg && !msg.seen) {
+            await Message.updateOne({ _id: messageId }, { $set: { seen: true } });
+            io.emit('message status updated', { messageId, status: 'seen' });
+        }
     } catch (err) {
-      console.error("❌ Error clearing chat", err);
+        console.error("Error marking message as seen:", err);
     }
   });
 
-  socket.on("send alert", (data) => {
-    io.emit("alert", {
-      sender: data.user,
-      text: data.text || "⚠️ ALERT!"
-    });
-  });
+  socket.on('typing start', () => { if (activeUsers[socket.id]) socket.broadcast.emit('user typing start', activeUsers[socket.id]); });
+  socket.on('typing stop', () => { if (activeUsers[socket.id]) socket.broadcast.emit('user typing stop', activeUsers[socket.id]); });
+  socket.on("clear chat", async () => { try { await Message.deleteMany({}); io.emit("chat cleared"); } catch (err) { console.error("❌ Error clearing chat", err); } });
+  socket.on("send alert", (data) => io.emit("alert", { sender: data.user, text: data.text }));
 
   socket.on("disconnect", () => {
-    const disconnectedUser = activeUsers[socket.id];
-    if (disconnectedUser) {
-      console.log(`❌ ${disconnectedUser.username} disconnected`);
-      socket.broadcast.emit('user typing stop', disconnectedUser);
+    const user = activeUsers[socket.id];
+    if (user) {
+      console.log(`❌ ${user.username} disconnected`);
+      socket.broadcast.emit('user typing stop', user);
       delete activeUsers[socket.id];
       broadcastUserList();
-    } else {
-      console.log("❌ User disconnected:", socket.id);
     }
   });
 });
 
 // ------------ Start Server ------------
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+server.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));

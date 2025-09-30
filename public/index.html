@@ -21,17 +21,16 @@
       .my-message { align-self:flex-end; background:#dcf8c6; border-bottom-right-radius:0; }
       .other-message { align-self:flex-start; background:#ffffff; border:1px solid #ececec; border-bottom-left-radius:0; }
       .reply-box{ font-size:0.8em; color:#444; border-left:3px solid #888; margin-bottom:5px; padding-left:6px; opacity:0.8; }
-      .timestamp{ font-size:0.75em; color:#555; text-align:right; width:100%; margin-top:3px; }
+      .timestamp-container { display: flex; justify-content: flex-end; align-items: center; width: 100%; margin-top: 3px; }
+      .timestamp { font-size: 0.75em; color: #555; }
+      .tick-status { font-size: 1em; color: #4fc3f7; margin-left: 5px; line-height: 1; }
       #reply-preview { display:none; width:100%; max-width:600px; background:#f1f1f1; border-left:4px solid #075e54; padding:6px; font-size:0.9em; margin-top:3px; box-sizing: border-box; }
       form { display:flex; width:100%; max-width:600px; margin-top:5px; background:#f0f0f0; padding:5px; border-radius:25px; box-sizing: border-box; align-items: center; }
-      input { flex:1; padding:10px; border:none; border-radius:20px; outline:none; font-size:1em; }
+      input[type="text"] { flex:1; padding:10px; border:none; border-radius:20px; outline:none; font-size:1em; background: white; }
       form button[type="submit"] { background:#075e54; color:white; border:none; padding:10px 15px; margin-left:5px; border-radius:50%; cursor:pointer; transition:background 0.2s; }
       form button[type="submit"]:hover { background:#128c7e; }
       #clear-btn, #alert-btn { margin:8px 0; border:none; padding:10px 16px; border-radius:25px; cursor:pointer; font-size:0.9em; color:white; width:140px; }
-      #clear-btn { background:#d9534f; }
-      #alert-btn { background:#ff0000; }
-      #clear-btn:hover { background:#c9302c; }
-      #alert-btn:hover { background:#b30000; }
+      #clear-btn { background:#d9534f; } #alert-btn { background:#ff0000; }
       #alert-box { display:none; position:fixed; top:20px; width:90%; max-width:500px; margin:auto; z-index:1000; background:#d9534f; color:white; font-weight:bold; padding:15px; border-radius:10px; text-align:center; box-shadow:0 3px 8px rgba(0,0,0,0.3); }
       #online-users-container { width:100%; max-width:600px; background:white; padding:5px 10px; margin-bottom:5px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); box-sizing: border-box; }
       #online-users-container h3 { margin:5px 0; font-size:0.9em; color:#075e54; }
@@ -42,8 +41,7 @@
       .typing-bubble { display: inline-flex; align-items: center; background: #e9e9e9; padding: 5px 10px; border-radius: 15px; border-bottom-left-radius: 0; animation: fadeIn 0.3s; }
       .typing-bubble img { width: 20px; height: 20px; border-radius: 50%; margin-right: 8px; }
       .typing-dots span { display: inline-block; width: 4px; height: 4px; background: #888; border-radius: 50%; margin: 0 1px; animation: typing-blink 1.4s infinite both; }
-      .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-      .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+      .typing-dots span:nth-child(2) { animation-delay: 0.2s; } .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
       @keyframes typing-blink { 0% { opacity: 0.2; } 20% { opacity: 1; } 100% { opacity: 0.2; } }
       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       #record-btn { background:#075e54; color:white; border:none; padding:10px; width:45px; height:45px; margin-left:5px; border-radius:50%; cursor:pointer; font-size: 1.2em; transition:background 0.2s; flex-shrink: 0; }
@@ -82,7 +80,7 @@
       <form id="form">
         <input type="file" id="image-input" accept="image/*" />
         <label for="image-input" id="attach-btn" role="button">📎</label>
-        <input id="input" autocomplete="off" placeholder="Type a message..." />
+        <input type="text" id="input" autocomplete="off" placeholder="Type a message..." />
         <button type="submit">➤</button>
         <button type="button" id="record-btn">🎙️</button>
       </form>
@@ -94,50 +92,40 @@
     <script>
       const socket = io("/", { transports: ["websocket", "polling"] });
 
-      let USERNAME = "Anonymous", AVATAR_URL = "/default-avatar.png", replyTo = null;
-      let typingTimer;
-      const TYPING_TIMEOUT = 2000;
-      let isTyping = false;
-
-      let mediaRecorder;
-      let audioChunks = [];
+      let USERNAME, AVATAR_URL, replyTo = null;
+      let typingTimer, isTyping = false;
+      let mediaRecorder, audioChunks = [];
+      
       const recordBtn = document.getElementById('record-btn');
       const imageInput = document.getElementById('image-input');
+      const inputField = document.getElementById('input');
+
+      const seenObserver = new IntersectionObserver((entries, observer) => {
+          entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                  const li = entry.target;
+                  socket.emit('message seen', { messageId: li.dataset.messageId });
+                  observer.unobserve(li);
+              }
+          });
+      }, { threshold: 0.9 });
 
       fetch("/me").then(r => r.json()).then(data => {
-        if (data.user) {
-          USERNAME = data.user.username;
-          AVATAR_URL = data.user.avatar_url || "/default-avatar.png";
-          document.getElementById("profile-name").textContent = USERNAME;
-          document.getElementById("profile-email").textContent = data.user.email;
-          document.getElementById("profile-pic").src = AVATAR_URL;
-          socket.emit('user connected', { username: USERNAME, avatar_url: AVATAR_URL });
-        }
+        if (!data.user) return window.location = '/login.html';
+        USERNAME = data.user.username;
+        AVATAR_URL = data.user.avatar_url || "/default-avatar.png";
+        document.getElementById("profile-name").textContent = USERNAME;
+        document.getElementById("profile-email").textContent = data.user.email;
+        document.getElementById("profile-pic").src = AVATAR_URL;
+        socket.emit('user connected', { username: USERNAME, avatar_url: AVATAR_URL });
       });
 
-      document.getElementById("profile-icon").onclick = () => {
-        const menu = document.getElementById("profile-menu");
-        menu.style.display = menu.style.display === "block" ? "none" : "block";
-      };
-
-      document.getElementById("logout-btn").onclick = async () => {
-        await fetch("/logout", { method: "POST" });
-        window.location = "/login.html";
-      };
-
-      document.getElementById("change-avatar").onclick = async () => {
-        const url = document.getElementById("avatar-url").value.trim();
-        if (url) {
-          const res = await fetch("/update-avatar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatarUrl: url }) });
-          const d = await res.json();
-          if (d.success) { AVATAR_URL = url; document.getElementById("profile-pic").src = url; alert("Avatar updated!"); }
-          else { alert("Error updating avatar"); }
-        }
-      };
-
       function addMessage(msg) {
+        if (!msg._id) return; // Don't render malformed messages
         const li = document.createElement("li");
         li.className = msg.user === USERNAME ? "my-message" : "other-message";
+        li.dataset.messageId = msg._id;
+
         const avatar = document.createElement("img");
         avatar.src = msg.avatar_url || "/default-avatar.png";
         avatar.className = "avatar";
@@ -164,25 +152,35 @@
           if (msg.replyTo) {
             const rd = document.createElement("div");
             rd.className = "reply-box";
-            rd.textContent = msg.replyTo.user + ": " + msg.replyTo.text;
+            rd.textContent = `${msg.replyTo.user}: ${msg.replyTo.text}`;
             content.appendChild(rd);
           }
           const main = document.createElement("div");
-          main.textContent = msg.user + ": " + msg.text;
+          main.textContent = `${msg.user}: ${msg.text}`;
           content.appendChild(main);
         }
 
         if (msg.time) {
-          const ts = document.createElement("div");
+          const tsContainer = document.createElement("div");
+          tsContainer.className = 'timestamp-container';
+          const ts = document.createElement("span");
           ts.className = "timestamp";
           ts.textContent = new Date(msg.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          content.appendChild(ts);
+          tsContainer.appendChild(ts);
+
+          if (msg.user === USERNAME) {
+            const tickStatus = document.createElement('span');
+            tickStatus.className = 'tick-status';
+            tickStatus.innerHTML = msg.seen ? '✓✓' : '✓';
+            tsContainer.appendChild(tickStatus);
+          }
+          content.appendChild(tsContainer);
         }
+        
         li.appendChild(avatar);
         li.appendChild(content);
-        const messages = document.getElementById("messages");
-        messages.appendChild(li);
-        messages.scrollTop = messages.scrollHeight;
+        document.getElementById("messages").appendChild(li);
+        document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
         
         if (!msg.audio_url && !msg.image_url) {
           li.onclick = () => {
@@ -190,65 +188,79 @@
             const preview = document.getElementById("reply-preview");
             preview.innerHTML = '';
             const boldEl = document.createElement('b');
-            boldEl.textContent = "Replying to " + replyTo.user + ": ";
+            boldEl.textContent = `Replying to ${replyTo.user}: `;
             preview.appendChild(boldEl);
             preview.append(replyTo.text);
             preview.style.display = "block";
-            document.getElementById("input").focus();
+            inputField.focus();
           };
         }
-      }
 
+        if (msg.user !== USERNAME && !msg.seen) {
+            seenObserver.observe(li);
+        }
+      }
+      
+      // --- Socket Event Listeners ---
       socket.on("chat history", msgs => msgs.forEach(addMessage));
       socket.on("chat message", msg => addMessage(msg));
-      socket.on("chat cleared", () => { document.getElementById("messages").innerHTML = ""; addMessage({ user: "System", text: "Chat cleared", time: new Date() }); });
-      
+      socket.on("chat cleared", () => { document.getElementById("messages").innerHTML = ""; addMessage({_id: Date.now(), user:"System",text:"Chat cleared",time:new Date()}); });
+      socket.on('message status updated', ({ messageId, status }) => {
+        const li = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (li) {
+            const tick = li.querySelector('.tick-status');
+            if (tick && status === 'seen') tick.innerHTML = '✓✓';
+        }
+      });
       socket.on("update user list", (users) => {
-        const userCount = document.getElementById("user-count");
+        document.getElementById("user-count").textContent = users.length;
         const userList = document.getElementById("online-users-list");
-        userCount.textContent = users.length;
         userList.innerHTML = "";
         users.forEach(user => {
-          const userItem = document.createElement("div");
-          userItem.className = "user-item";
-          const avatar = document.createElement("img");
-          avatar.src = user.avatar_url || "/default-avatar.png";
-          const username = document.createElement("span");
-          username.textContent = user.username;
-          userItem.appendChild(avatar);
-          userItem.appendChild(username);
-          userList.appendChild(userItem);
+          const item = document.createElement("div");
+          item.className = "user-item";
+          item.innerHTML = `<img src="${user.avatar_url || '/default-avatar.png'}"><span>${user.username}</span>`;
+          userList.appendChild(item);
         });
       });
-
       socket.on('user typing start', (user) => {
-        const indicatorContainer = document.getElementById('typing-indicator');
+        const container = document.getElementById('typing-indicator');
         if (document.getElementById(`typing-${user.username}`)) return;
         const bubble = document.createElement('div');
         bubble.className = 'typing-bubble';
         bubble.id = `typing-${user.username}`;
-        bubble.innerHTML = `<img src="${user.avatar_url || '/default-avatar.png'}" alt="avatar"><div class="typing-dots"><span></span><span></span><span></span></div>`;
-        indicatorContainer.appendChild(bubble);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        bubble.innerHTML = `<img src="${user.avatar_url || '/default-avatar.png'}"><div class="typing-dots"><span></span><span></span><span></span></div>`;
+        container.appendChild(bubble);
       });
-
       socket.on('user typing stop', (user) => {
         const indicator = document.getElementById(`typing-${user.username}`);
         if (indicator) indicator.remove();
       });
+      socket.on("alert", d => {
+        const ab = document.getElementById("alert-box");
+        ab.textContent = `${d.text} 🚨 (from ${d.sender})`;
+        ab.style.display="block";
+        setTimeout(() => ab.style.display="none", 5000);
+      });
 
+      // --- UI Event Handlers ---
+      document.getElementById("profile-icon").onclick = () => { document.getElementById("profile-menu").style.display = document.getElementById("profile-menu").style.display === "block" ? "none" : "block"; };
+      document.getElementById("logout-btn").onclick = async () => { await fetch("/logout", { method: "POST" }); window.location = "/login.html"; };
+      document.getElementById("change-avatar").onclick = async () => {
+        const url = document.getElementById("avatar-url").value.trim();
+        if (!url) return;
+        const res = await fetch("/update-avatar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatarUrl: url }) });
+        const d = await res.json();
+        if (d.success) { AVATAR_URL = url; document.getElementById("profile-pic").src = url; alert("Avatar updated!"); } else { alert("Error updating avatar."); }
+      };
       imageInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
         const formData = new FormData();
         formData.append('image', file);
-        fetch('/upload-image', { method: 'POST', body: formData })
-          .then(res => res.json())
-          .then(data => { if (!data.success) alert('Failed to send image.'); })
-          .catch(err => console.error('Image upload error:', err));
+        fetch('/upload-image', { method: 'POST', body: formData }).catch(err => console.error('Image upload error:', err));
         event.target.value = null;
       });
-
       recordBtn.onclick = async () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
@@ -264,49 +276,33 @@
               const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
               const formData = new FormData();
               formData.append('audio', audioBlob, 'voice-note.webm');
-              fetch('/upload-voice-note', { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => { if (!data.success) alert('Failed to send voice note.'); })
-                .catch(err => console.error('Upload error:', err));
+              fetch('/upload-voice-note', { method: 'POST', body: formData }).catch(err => console.error('Upload error:', err));
               stream.getTracks().forEach(track => track.stop());
             };
             mediaRecorder.start();
             recordBtn.classList.add('is-recording');
             recordBtn.innerHTML = '⏹️';
-          } catch (err) {
-            console.error('Error accessing microphone:', err);
-            alert('Could not access microphone. Please grant permission and try again.');
-          }
+          } catch (err) { alert('Could not access microphone.'); }
         }
       };
-
-      document.getElementById('input').addEventListener('input', () => {
+      inputField.addEventListener('input', () => {
         clearTimeout(typingTimer);
-        if (!isTyping) {
-            socket.emit('typing start');
-            isTyping = true;
-        }
-        typingTimer = setTimeout(() => {
-            socket.emit('typing stop');
-            isTyping = false;
-        }, TYPING_TIMEOUT);
+        if (!isTyping) { socket.emit('typing start'); isTyping = true; }
+        typingTimer = setTimeout(() => { socket.emit('typing stop'); isTyping = false; }, 2000);
       });
-
       document.getElementById("form").onsubmit = (e) => {
         e.preventDefault();
-        const input = document.getElementById("input");
-        if (input.value.trim()) {
-          clearTimeout(typingTimer);
-          socket.emit('typing stop');
-          isTyping = false;
-          socket.emit("chat message", { user: USERNAME, avatar_url: AVATAR_URL, text: input.value.trim(), replyTo });
-          input.value = ""; replyTo = null; document.getElementById("reply-preview").style.display = "none";
-        }
+        if (!inputField.value.trim()) return;
+        clearTimeout(typingTimer);
+        socket.emit('typing stop');
+        isTyping = false;
+        socket.emit("chat message", { user: USERNAME, avatar_url: AVATAR_URL, text: inputField.value.trim(), replyTo });
+        inputField.value = "";
+        replyTo = null;
+        document.getElementById("reply-preview").style.display = "none";
       };
-
       document.getElementById("clear-btn").onclick = () => { if (confirm("Delete all chats?")) socket.emit("clear chat"); };
       document.getElementById("alert-btn").onclick = () => { const t = prompt("Enter alert message:") || "⚠️ ALERT!"; socket.emit("send alert", { user: USERNAME, text: t }); };
-      socket.on("alert", d => { const ab = document.getElementById("alert-box"); ab.textContent = d.text + " 🚨 (from " + d.sender + ")"; ab.style.display = "block"; setTimeout(() => ab.style.display = "none", 5000); });
     </script>
   </body>
 </html>
